@@ -9,9 +9,12 @@
 
 package com.xyonmusic.music.ui.player
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -89,12 +92,23 @@ fun XyonCollapsedPlayer(
     )
     val fraction by rememberPlaybackFraction(playerConnection.player, isPlaying)
     var drag by remember { mutableFloatStateOf(0f) }
+    val barInteraction = remember { MutableInteractionSource() }
+    val barPressed by barInteraction.collectIsPressedAsState()
+    val barScale by animateFloatAsState(
+        targetValue = if (barPressed) 0.98f else 1f,
+        animationSpec = spring(dampingRatio = 0.45f, stiffness = 700f),
+        label = "miniBarBounce",
+    )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(58.dp)
-            .graphicsLayer { translationY = drag.coerceAtMost(0f) * 0.4f }
+            .graphicsLayer {
+                translationY = drag.coerceAtMost(0f) * 0.4f
+                scaleX = barScale
+                scaleY = barScale
+            }
             .clip(shape)
             .liquidGlass(backdrop = backdrop, shape = shape, style = miniGlass)
             .pointerInput(Unit) {
@@ -110,7 +124,7 @@ fun XyonCollapsedPlayer(
                 ) { change, dy -> change.consume(); drag += dy }
             }
             .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = barInteraction,
                 indication = null,
                 onClick = {
                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
@@ -206,12 +220,20 @@ private fun MiniControl(
     contentColor: Color,
     onClick: () -> Unit,
 ) {
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val scale by animateFloatAsState(
+        targetValue = if (pressed) 0.85f else 1f,
+        animationSpec = spring(dampingRatio = 0.45f, stiffness = 700f),
+        label = "miniControlBounce",
+    )
     Box(
         modifier = Modifier
             .size(44.dp)
+            .graphicsLayer { scaleX = scale; scaleY = scale }
             .clip(CircleShape)
             .combinedClickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interaction,
                 indication = null,
                 onClick = onClick,
             ),
