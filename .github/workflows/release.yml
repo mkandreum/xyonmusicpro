@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   build_stable:
-    name: Build Universal GMS Stable Release
+    name: Build Universal FOSS Stable Release
     runs-on: ubuntu-latest
 
     steps:
@@ -34,9 +34,6 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-disabled: true
-
-      - name: Setup FFTW for Android
-        uses: ./.github/actions/setup-fftw
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
@@ -61,7 +58,7 @@ jobs:
           mkdir -p app/keystore
           echo "$KEYSTORE_BASE64" | base64 -d > app/keystore/release.keystore
 
-      - name: Build Universal GMS Release APK
+      - name: Build Universal FOSS Release APK
         env:
           LASTFM_API_KEY: ${{ secrets.LASTFM_API_KEY }}
           LASTFM_SECRET: ${{ secrets.LASTFM_SECRET }}
@@ -69,13 +66,13 @@ jobs:
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          ./gradlew assembleUniversalGmsRelease --no-configuration-cache --console=plain --warning-mode summary -x lint
+          ./gradlew assembleUniversalFossRelease --no-configuration-cache --console=plain --warning-mode summary -x lint
 
       - name: Upload APK to Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
-          APK_PATH=$(find app/build/outputs/apk -name '*.apk' | head -n 1)
+          APK_PATH=$(find app/build/outputs/apk/universalFoss/release -name '*.apk' | head -n 1)
           mv "$APK_PATH" "xyonmusic-${TAG}.apk"
           gh release upload "$TAG" "xyonmusic-${TAG}.apk" --repo "${{ github.repository }}" --clobber
