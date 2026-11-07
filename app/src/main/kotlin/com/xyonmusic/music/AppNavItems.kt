@@ -46,7 +46,7 @@ fun rememberAppNavItems(): AppNavItems {
     }
     // Explore is only shown in the floating navigation bar, and is online-only.
     val floatingNavigationItems = remember(navigationItems, localOnlyMode, hiddenRoutes) {
-        if (localOnlyMode || Screens.Explore.route in hiddenRoutes) navigationItems else navigationItems + Screens.Explore
+        navigationItems
     }
     return remember(listenTogetherInTopBar, localOnlyMode, navigationItems, floatingNavigationItems) {
         AppNavItems(listenTogetherInTopBar, localOnlyMode, navigationItems, floatingNavigationItems)

@@ -288,4 +288,10 @@
     <string name="use_login_for_browse">Utilice el inicio de sesión para ver el contenido</string>
     <string name="use_login_for_browse_desc">Esto puede influir en el contenido que ve y, por ejemplo, muestra álbumes exclusivos si ha iniciado sesión con una cuenta Premium</string>
     <string name="action_login">Acceder</string>
+    <string name="migrate_to_songs">Migrar a Canciones</string>
+    <string name="migrate_to_songs_desc">Añade todas las pistas a Canciones en el mismo orden</string>
+    <string name="migrate_to_songs_done">Pistas añadidas a Canciones</string>
+    <string name="library_view_menu">Vista</string>
+    <string name="library_view_songs">Lista de canciones</string>
+    <string name="library_view_sections">Secciones</string>
 </resources>

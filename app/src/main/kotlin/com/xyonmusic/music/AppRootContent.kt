@@ -309,7 +309,7 @@ internal fun AppRootContent(
 
             // Native XyonMusic glass: one captured layer shared by the tab bar and the mini player.
             val nativeGlassBackdrop = rememberGlassBackdrop()
-            val nativeFoldState = rememberLiquidBarFoldState(mode = LiquidFoldMode.ExpandedAtTop)
+            val nativeFoldState = rememberLiquidBarFoldState(mode = LiquidFoldMode.ByDirection)
 
             // Share one blurred backdrop across glass surfaces to avoid duplicate effect passes.
             val glassPoolBackdrop = rememberGlassPool()
@@ -861,6 +861,7 @@ internal fun AppRootContent(
                                 accountName = sidebarAccountName,
                                 navController = navController,
                                 onAccountClick = onAccountClick,
+                                onSearchClick = enterSearch,
                             )
                         },
                     bottomBar = {

@@ -1322,6 +1322,17 @@ interface DatabaseDao {
     @Query("SELECT * FROM song WHERE isDownloaded = 1 ORDER BY totalPlayTime")
     fun downloadedSongsByPlayTimeAsc(): Flow<List<Song>>
 
+    /**
+     * Adds every track of a playlist to the library songs list in one statement, keeping the
+     * playlist order: position 0 gets the newest date, so the default newest-first sort
+     * lists them exactly like the playlist. Songs already in the library are left alone.
+     */
+    @Query(
+        "UPDATE song SET inLibrary = :base - (SELECT MIN(position) FROM playlist_song_map WHERE playlistId = :playlistId AND songId = song.id) * 1000 " +
+            "WHERE inLibrary IS NULL AND id IN (SELECT songId FROM playlist_song_map WHERE playlistId = :playlistId)",
+    )
+    fun migratePlaylistToLibrary(playlistId: String, base: Long)
+
     @Query("UPDATE song SET isDownloaded = :downloaded, dateDownload = :date WHERE id = :songId")
     fun updateDownloadedInfo(songId: String, downloaded: Boolean, date: LocalDateTime?)
 

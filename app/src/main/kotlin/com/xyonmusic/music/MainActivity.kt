@@ -181,9 +181,7 @@ class MainActivity : ComponentActivity() {
 
         // Cold launch from the launcher only (WelcomeActivity hands off with this extra);
         // notification/deep-link opens go straight to the app.
-        val playIntro = savedInstanceState == null && intent.getBooleanExtra(EXTRA_PLAY_INTRO, false)
         setContent {
-            var showIntro by rememberSaveable { mutableStateOf(playIntro) }
             Box(Modifier.fillMaxSize()) {
                 AppRootContent(
                     activity = this@MainActivity,
@@ -194,7 +192,6 @@ class MainActivity : ComponentActivity() {
                     syncUtils = syncUtils,
                     historyDataSource = historyDataSource,
                 )
-                if (showIntro) com.xyonmusic.music.ui.component.XyonMusicIntro(onFinished = { showIntro = false })
             }
         }
     }

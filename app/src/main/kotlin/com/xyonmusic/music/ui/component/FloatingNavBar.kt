@@ -203,7 +203,8 @@ private fun LiquidNavBarChrome(
         else -> AppTheme.colorScheme.onSurface
     }
 
-    val searchScreen = navigationItems.firstOrNull { it == Screens.Search }
+    // Search lives in the top bar now; it no longer gets its own button in the bar.
+    val searchScreen: Screens? = null
     val tabScreens = remember(navigationItems) { navigationItems.filter { it != Screens.Search } }
     val selectedTabKey = rememberStickySelectedRoute(currentRoute, tabScreens)
     val barScreens = remember(tabScreens, searchScreen) { tabScreens + listOfNotNull(searchScreen) }
@@ -222,21 +223,6 @@ private fun LiquidNavBarChrome(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        AnimatedVisibility(
-            visible = showPlayerAccessory,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut(),
-        ) {
-            XyonCollapsedPlayer(
-                backdrop = backdrop,
-                glassStyle = glassStyle,
-                contentColor = accessoryContentColor,
-                onClick = onAccessoryClick,
-                onLongClick = onAccessoryLongClick,
-                modifier = Modifier.fillMaxWidth(),
-            )
-        }
-
         LiquidBar(
             backdrop = backdrop,
             items = barScreens.map { screen ->
@@ -283,6 +269,20 @@ private fun LiquidNavBarChrome(
                 val screen = barScreens.getOrNull(index)
                 if (screen != null && tabContextMenu != null) heldTab = screen to rect
             },
+            // Same dynamic as the Convx bar: the mini player sits above the tabs and, when the
+            // bar folds on scroll, slides down into the row beside the tab circle.
+            accessory = if (showPlayerAccessory) {
+                {
+                    XyonCollapsedPlayer(
+                        backdrop = backdrop,
+                        glassStyle = glassStyle,
+                        contentColor = accessoryContentColor,
+                        onClick = onAccessoryClick,
+                        onLongClick = onAccessoryLongClick,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+            } else null,
         )
     }
 }

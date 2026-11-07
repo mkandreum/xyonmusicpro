@@ -764,4 +764,10 @@
     <string name="playlist_load_failed">Couldn?t load this playlist.</string>
     <string name="lyrics_centered_scroll_description">Smooth centered scrolling, with word animation when timing is available</string>
     <string name="lyrics_style_flamingo">XyonMusic Lyrics</string>
+    <string name="migrate_to_songs">Move to Songs</string>
+    <string name="migrate_to_songs_desc">Add all tracks to Songs in the same order</string>
+    <string name="migrate_to_songs_done">Tracks added to Songs</string>
+    <string name="library_view_menu">View</string>
+    <string name="library_view_songs">Songs list</string>
+    <string name="library_view_sections">Sections</string>
 </resources>

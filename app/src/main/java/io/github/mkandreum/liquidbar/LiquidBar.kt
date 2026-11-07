@@ -175,8 +175,21 @@ fun LiquidBar(
     actionSpacing: Dp = 10.dp,
     /** Pulsación larga sobre una pestaña, con el rectángulo de su celda para anclar un menú. */
     onItemLongClick: ((Int, Rect) -> Unit)? = null,
+    /**
+     * Mini reproductor: abierta, va encima de la cápsula; al plegar baja a la fila y ocupa el hueco entre
+     * el círculo de la pestaña y el borde derecho (o el círculo de la acción), con el mismo muelle.
+     */
+    accessory: (@Composable () -> Unit)? = null,
+    accessoryHeight: Dp = 58.dp,
 ) {
     val folded = foldState?.folded == true
+    val presence by animateFloatAsState(
+        if (accessory != null) 1f else 0f,
+        spring(dampingRatio = 0.8f, stiffness = 380f),
+        label = "liquidAccessory",
+    )
+    val lastAccessory = remember { mutableStateOf(accessory) }
+    if (accessory != null) lastAccessory.value = accessory
     val fold = remember { Animatable(if (folded) 1f else 0f) }
     LaunchedEffect(folded) {
         fold.animateTo(
@@ -219,7 +232,11 @@ fun LiquidBar(
     }
 
     Layout(
-        modifier = modifier.fillMaxWidth().height(rowHeight),
+        modifier = modifier.fillMaxWidth().gooey {
+            // Pico a mitad del plegado o despliegue; 0 en reposo y mientras el muelle rebasa 0..1.
+            val p = fold.value
+            if (p <= 0f || p >= 1f) 0f else GooeyPeakBlur.toPx() * 4f * p * (1f - p)
+        },
         content = {
             // 0 · el cristal de la cápsula (y del círculo izquierdo cuando se pliega)
             Box(
@@ -327,6 +344,15 @@ fun LiquidBar(
                     }
                 }
             }
+            // 5 · el mini reproductor: encima al abrir, en la fila al plegar
+            val shown = lastAccessory.value
+            if (shown != null && presence > 0.001f) {
+                Box(
+                    Modifier
+                        .graphicsLayer { alpha = presence }
+                        .then(if (accessory == null) Modifier.clearAndSetSemantics {} else Modifier)
+                ) { shown() }
+            }
         }
     ) { m, constraints ->
         val width = constraints.maxWidth
@@ -347,14 +373,30 @@ fun LiquidBar(
         val single = m[2].measure(Constraints.fixed(circle, height))
         val actionSurface = m[3].measure(Constraints.fixed(circle, height))
         val actionControl = m[4].measure(Constraints.fixed(circle, height))
-        layout(width, height) {
-            surface.placeRelative(0, 0)
-            group.placeRelative(0, 0)
-            single.placeRelative(selectedX, 0)
+
+        val gap = actionSpacing.roundToPx()
+        val accFull = accessoryHeight.roundToPx()
+        val hasAcc = m.size > 5
+        val accOpenH = if (hasAcc) (accFull * presence).roundToInt() else 0
+        val gapOpen = if (hasAcc) (gap * presence).roundToInt() else 0
+        val foldedRowH = if (hasAcc) maxOf(height, accFull) else height
+        val openTotal = accOpenH + gapOpen + height
+        val totalH = lerp(openTotal.toFloat(), lerp(height.toFloat(), foldedRowH.toFloat(), presence), p).roundToInt()
+        val barY = lerp((accOpenH + gapOpen).toFloat(), (totalH - height) / 2f, p).roundToInt()
+        val rightReserved = if (detached) circle + gap else 0
+        val accW = lerp(width.toFloat(), (width - circle - gap - rightReserved).toFloat().coerceAtLeast(0f), p).roundToInt()
+        val accX = lerp(0f, (circle + gap).toFloat(), p).roundToInt()
+        val accY = lerp(0f, (totalH - accFull) / 2f, p).roundToInt()
+        val acc = if (hasAcc) m[5].measure(Constraints.fixed(accW, accFull)) else null
+        layout(width, totalH) {
+            surface.placeRelative(0, barY)
+            group.placeRelative(0, barY)
+            single.placeRelative(selectedX, barY)
             if (action != null) {
-                actionSurface.placeRelative(actionX, 0)
-                actionControl.placeRelative(actionX, 0)
+                actionSurface.placeRelative(actionX, barY)
+                actionControl.placeRelative(actionX, barY)
             }
+            acc?.placeRelative(accX, accY)
         }
     }
 }

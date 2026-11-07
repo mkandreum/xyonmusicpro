@@ -119,6 +119,23 @@ fun LocalPlaylistMenu(
             )
         }
 
+        val migrateDatabase = com.xyonmusic.music.LocalDatabase.current.get()
+        add(
+            IosMenuItemData(
+                title = { Text(stringResource(R.string.migrate_to_songs)) },
+                description = { Text(stringResource(R.string.migrate_to_songs_desc)) },
+                icon = {
+                    SymbolIcon(symbol = sf("music.note"), contentDescription = null)
+                },
+                onClick = {
+                    val id = playlist.id
+                    migrateDatabase.query { migratePlaylistToLibrary(id, System.currentTimeMillis()) }
+                    android.widget.Toast.makeText(context, context.getString(R.string.migrate_to_songs_done), android.widget.Toast.LENGTH_SHORT).show()
+                    onDismiss()
+                }
+            )
+        )
+
         if (!isGuest) {
             add(
                 IosMenuItemData(

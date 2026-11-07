@@ -12,6 +12,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
@@ -92,6 +93,7 @@ fun AppTopBar(
     navController: NavHostController,
     onAccountClick: () -> Unit,
     chromeVisible: Boolean = visible,
+    onSearchClick: () -> Unit = {},
 ) {
         AnimatedVisibility(
             visible = visible,
@@ -144,6 +146,21 @@ fun AppTopBar(
                         )
                     },
                     actions = {
+                      androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier
+                                .size(44.dp)
+                                .iosGlass(shape = CircleShape, spec = IosGlassSpec.Control, interactive = true)
+                                .clickable(onClick = onSearchClick),
+                        ) {
+                            IosGlyph(
+                                symbol = sf("magnifyingglass"),
+                                tint = AppTheme.colorScheme.onSurface,
+                                box = 22.dp,
+                            )
+                        }
+                        Spacer(Modifier.width(8.dp))
                         if (effectiveRoute == Screens.Library.route) {
                             LibraryTopBarActions(navController)
                         } else {
@@ -156,6 +173,7 @@ fun AppTopBar(
                                 }
                             }
                         }
+                      }
                     },
                 )
             }
@@ -168,6 +186,45 @@ private fun LibraryTopBarActions(navController: NavHostController) {
         mutableStateOf(false) }
     var showCreatePlaylist by remember { mutableStateOf(false) }
 
+    var viewMenuExpanded by remember { mutableStateOf(false) }
+    val (_, setLibraryFilter) = com.xyonmusic.music.utils.rememberEnumPreference(
+        com.xyonmusic.music.constants.ChipSortTypeKey,
+        com.xyonmusic.music.constants.LibraryFilter.LIBRARY,
+    )
+    Box {
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(44.dp)
+                .iosGlass(shape = CircleShape, spec = IosGlassSpec.Control, interactive = true)
+                .menuTrigger { viewMenuExpanded = true },
+        ) {
+            IosGlyph(
+                symbol = sf("list.bullet"),
+                tint = AppTheme.colorScheme.onSurface,
+                box = 22.dp,
+            )
+        }
+        DropdownMenu(expanded = viewMenuExpanded, onDismissRequest = { viewMenuExpanded = false }) {
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.library_view_songs)) },
+                leadingIcon = { IosGlyph(sf("SFMusicNote"), AppTheme.colorScheme.onSurface, 19.dp, enterOnly = true) },
+                onClick = {
+                    viewMenuExpanded = false
+                    setLibraryFilter(com.xyonmusic.music.constants.LibraryFilter.SONGS)
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(R.string.library_view_sections)) },
+                leadingIcon = { IosGlyph(sf("SFPlus"), AppTheme.colorScheme.onSurface, 19.dp, enterOnly = true) },
+                onClick = {
+                    viewMenuExpanded = false
+                    setLibraryFilter(com.xyonmusic.music.constants.LibraryFilter.LIBRARY)
+                },
+            )
+        }
+    }
+    Spacer(Modifier.width(8.dp))
     Box {
         Box(
             contentAlignment = Alignment.Center,

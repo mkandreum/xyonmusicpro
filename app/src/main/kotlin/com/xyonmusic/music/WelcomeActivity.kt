@@ -141,6 +141,14 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.absoluteValue
 import androidx.datastore.preferences.core.edit
+import io.github.mkandreum.liquidbar.glass.glassSource
+import io.github.mkandreum.liquidbar.LiquidGlassStyle
+import io.github.mkandreum.liquidbar.liquidGlass
+import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.InfiniteRepeatableSpec
+import androidx.compose.ui.graphics.Brush
+import kotlin.math.cos
+import kotlin.math.sin
 
 data class OnboardingPageInfo(
     val content: @Composable (onUpdateScrollState: (Boolean) -> Unit) -> Unit
@@ -162,9 +170,10 @@ class WelcomeActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             XyonMusicTheme {
+              com.xyonmusic.music.ui.theme.ForcedDarkScope {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = AppTheme.colorScheme.background
+                    color = Color(0xFF05060A)
                 ) {
                     WelcomePagerScreen(onFinished = {
                         lifecycleScope.launch {
@@ -177,6 +186,7 @@ class WelcomeActivity : ComponentActivity() {
                         }
                     })
                 }
+              }
             }
         }
     }
@@ -720,6 +730,15 @@ fun WelcomePagerScreen(onFinished: () -> Unit) {
         }
     }
 
+    val glassBackdrop = io.github.mkandreum.liquidbar.glass.rememberGlassBackdrop()
+    Box(Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .glassSource(glassBackdrop)
+    ) {
+        OnboardingAurora(position = { pagerState.currentPage + pagerState.currentPageOffsetFraction })
+    }
     Box(
         modifier = Modifier.fillMaxSize(),
         contentAlignment = Alignment.TopCenter
@@ -786,8 +805,8 @@ fun WelcomePagerScreen(onFinished: () -> Unit) {
                             .width(dotWidth)
                             .clip(RoundedCornerShape(50))
                             .background(
-                                if (selected) AppTheme.colorScheme.primary
-                                else AppTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
+                                if (selected) Color.White
+                                else Color.White.copy(alpha = 0.28f)
                             )
                     )
                 }
@@ -839,9 +858,9 @@ fun WelcomePagerScreen(onFinished: () -> Unit) {
                             }
                         },
                         containerColor = Color.Transparent,
-                        contentColor = AppTheme.colorScheme.onSurfaceVariant,
+                        contentColor = Color.White.copy(alpha = 0.85f),
                         modifier = Modifier.fillMaxSize(),
-                        isOutlined = true
+                        backdrop = glassBackdrop,
                     )
                 }
 
@@ -875,13 +894,15 @@ fun WelcomePagerScreen(onFinished: () -> Unit) {
                                 }
                             }
                         },
-                        containerColor = AppTheme.colorScheme.primary.copy(alpha = alphaNext),
-                        contentColor = AppTheme.colorScheme.onPrimary.copy(alpha = alphaNext),
-                        modifier = Modifier.fillMaxSize()
+                        containerColor = Color(0xFF8FA8FF).copy(alpha = 0.55f * alphaNext),
+                        contentColor = Color.White.copy(alpha = alphaNext),
+                        modifier = Modifier.fillMaxSize(),
+                        backdrop = glassBackdrop,
                     )
                 }
             }
         }
+    }
     }
 }
 
@@ -988,7 +1009,8 @@ fun PermissionCard(
                 onClick = onClick
             ),
         shape = animatedShape,
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.09f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Brush.linearGradient(listOf(Color.White.copy(0.38f), Color.White.copy(0.06f), Color.White.copy(0.18f)))),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         ListItem(
@@ -1003,7 +1025,7 @@ fun PermissionCard(
                 Text(
                     text = description,
                     fontFamily = GoogleSansFlex,
-                    color = AppTheme.colorScheme.onSurfaceVariant
+                    color = Color.White.copy(alpha = 0.68f)
                 )
             },
             leadingContent = {
@@ -1042,7 +1064,8 @@ fun FeatureCard(
             .fillMaxWidth()
             .clip(shape),
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = AppTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.09f)),
+        border = androidx.compose.foundation.BorderStroke(1.dp, Brush.linearGradient(listOf(Color.White.copy(0.38f), Color.White.copy(0.06f), Color.White.copy(0.18f)))),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         ListItem(
@@ -1057,7 +1080,7 @@ fun FeatureCard(
                 Text(
                     text = description,
                     fontFamily = GoogleSansFlex,
-                    color = AppTheme.colorScheme.onSurfaceVariant
+                    color = Color.White.copy(alpha = 0.68f)
                 )
             },
             leadingContent = {
@@ -1088,37 +1111,71 @@ fun WelcomeExpressiveButton(
     containerColor: Color,
     contentColor: Color,
     modifier: Modifier = Modifier,
-    isOutlined: Boolean = false
+    isOutlined: Boolean = false,
+    backdrop: io.github.mkandreum.liquidbar.glass.GlassBackdrop? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
-    
     val scale by animateFloatAsState(
         targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = androidx.compose.animation.core.spring(dampingRatio = 0.55f, stiffness = 500f),
         label = "buttonScale"
     )
-
-    Surface(
-        onClick = onClick,
+    val glass = if (backdrop != null) {
+        Modifier.liquidGlass(backdrop, CircleShape, LiquidGlassStyle.Dark, tint = containerColor)
+    } else {
+        Modifier.background(containerColor, CircleShape)
+    }
+    Box(
         modifier = modifier
+            .graphicsLayer { scaleX = scale; scaleY = scale }
+            .then(glass)
             .clip(CircleShape)
-            .then(if (isPressed) Modifier.rotate(0f) else Modifier), // placeholder for scale
-        color = containerColor,
-        contentColor = contentColor,
-        border = if (isOutlined) androidx.compose.foundation.BorderStroke(1.dp, AppTheme.colorScheme.outline.copy(alpha = 0.3f)) else null,
-        shape = CircleShape,
-        interactionSource = interactionSource
+            .clickable(interactionSource = interactionSource, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center
     ) {
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = text,
-                fontWeight = FontWeight.Bold,
-                fontFamily = GoogleSansFlex,
-                fontSize = 18.sp
+        Text(
+            text = text,
+            fontWeight = FontWeight.Bold,
+            fontFamily = GoogleSansFlex,
+            fontSize = 18.sp,
+            color = contentColor,
+        )
+    }
+}
+
+/** Slow drifting colour field behind the onboarding; the glass above refracts it. */
+@Composable
+fun OnboardingAurora(position: () -> Float) {
+    val t by rememberInfiniteTransition(label = "aurora").animateFloat(
+        initialValue = 0f,
+        targetValue = (2 * Math.PI).toFloat(),
+        animationSpec = InfiniteRepeatableSpec(androidx.compose.animation.core.tween(42000, easing = LinearEasing), RepeatMode.Restart),
+        label = "auroraT",
+    )
+    val blobs = remember {
+        listOf(
+            Color(0xFF5B6CFF), Color(0xFFFF4FA3), Color(0xFF16D9C5), Color(0xFFFFA24D), Color(0xFF7A3BFF),
+        )
+    }
+    Canvas(Modifier.fillMaxSize()) {
+        drawRect(Color(0xFF05060A))
+        val w = size.width; val h = size.height
+        val pos = position()
+        blobs.forEachIndexed { i, c ->
+            val ph = t + i * 1.7f
+            val cx = w * (0.5f + 0.42f * sin(ph * (1 + i * 0.13f)) ) - pos * w * (0.10f + i * 0.04f)
+            val cy = h * (0.5f + 0.38f * cos(ph * 0.8f + i)) 
+            val r = (if (i % 2 == 0) 0.75f else 0.55f) * maxOf(w, h) * 0.6f
+            drawCircle(
+                brush = Brush.radialGradient(
+                    listOf(c.copy(alpha = 0.55f), c.copy(alpha = 0.18f), Color.Transparent),
+                    center = androidx.compose.ui.geometry.Offset(cx, cy), radius = r,
+                ),
+                radius = r, center = androidx.compose.ui.geometry.Offset(cx, cy),
             )
         }
+        // Vignette keeps text legible and the edges deep.
+        drawRect(Brush.verticalGradient(listOf(Color.Black.copy(0.35f), Color.Transparent, Color.Black.copy(0.55f))))
     }
 }
