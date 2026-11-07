@@ -2,7 +2,7 @@
  * XyonMusic Project (C) 2026
  * Licensed under GPL-3.0 | See git history for contributors
  */
-// Ported from mkandreumdev-creator/xyonmusic (https://github.com/mkandreum/xyonmusicpro), GPL-3.0.
+// Ported from Convx (https://github.com/cosmictaserdev-creator/Convx), GPL-3.0.
 
 package com.xyonmusic.music.applecanvas
 

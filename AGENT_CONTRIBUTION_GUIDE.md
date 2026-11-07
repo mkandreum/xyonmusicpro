@@ -1,6 +1,6 @@
 # XyonMusic Agent Contribution Guide
 
-**Project owner:** Cosmic Taser (`@mkandreumdev-creator`)
+**Project owner:** XyonMusic (`@mkandreum`)
 
 This guide is the contribution contract for AI agents working in XyonMusic. Read it before exploring or changing code. Use the bundled skills under [`contributor/skills/`](contributor/skills/) when their topic applies. The Android Compose and XyonMusic motion skills are required for UI work.
 
