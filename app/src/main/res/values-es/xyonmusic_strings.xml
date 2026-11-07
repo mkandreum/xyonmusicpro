@@ -640,5 +640,6 @@
     <string name="discord_advanced_mode">Modo avanzado</string>
     <string name="discord_advanced_mode_description">Mostrar opciones de personalización adicionales para Rich Presence</string>
     <string name="xyon_imported_albums">Álbumes importados</string>
+    <string name="spotify_preparing_import">Preparando importación…</string>
     <string name="spotify_import_no_matches">No se encontró ninguna coincidencia reproducible para «%1$s». Tu lista existente no se ha tocado; revisa la conexión e inténtalo de nuevo.</string>
 </resources>

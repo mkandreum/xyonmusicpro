@@ -526,7 +526,16 @@ class SpotifyImportViewModel @Inject constructor(
     fun startImport(selectedIds: List<String>) {
         importJob?.cancel()
         importJob = viewModelScope.launch(Dispatchers.IO) {
-            _importProgress.update { null }
+            // Show the progress card immediately: the first network round-trip can take a
+            // moment, and a silent button otherwise reads as "nothing happened".
+            _importProgress.update {
+                SpotifyImportProgress(
+                    playlistName = context.getString(R.string.spotify_preparing_import),
+                    currentSongIndex = 0,
+                    totalSongs = 0,
+                    percent = 0f,
+                )
+            }
 
             try {
                 for (id in selectedIds) {

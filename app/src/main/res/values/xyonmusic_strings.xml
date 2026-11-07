@@ -1209,6 +1209,7 @@
     <string name="spotify_import_finished">Finished importing</string>
     <string name="spotify_importing_songs_count">Importing %1$d of %2$d songs</string>
     <string name="xyon_imported_albums">Imported albums</string>
+    <string name="spotify_preparing_import">Preparing import…</string>
     <string name="spotify_import_no_matches">Couldn\'t find any playable match for “%1$s”. Your existing playlist was left untouched; check your connection and try again.</string>
     <string name="spotify_imported_songs_count">Finished importing %1$d of %2$d songs</string>
     <string name="spotify_import_summary">Imported %1$d playlists: %2$d tracks matched, %3$d tracks failed.</string>
