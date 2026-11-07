@@ -9,6 +9,9 @@ package com.xyonmusic.music.ui.component
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -77,7 +80,7 @@ import com.xyonmusic.music.ui.ios.compat.AppTheme
 import com.xyonmusic.music.ui.ios.component.IosContextMenuOverlay
 import com.xyonmusic.music.ui.ios.component.IosMenuSection
 import com.xyonmusic.music.ui.ios.foundation.IosTheme
-import com.xyonmusic.music.ui.player.FloatingMiniPlayer
+import com.xyonmusic.music.ui.player.XyonCollapsedPlayer
 import com.xyonmusic.music.ui.screens.Screens
 import com.xyonmusic.music.ui.screens.search.DynamicSearchPlaceholder
 import com.xyonmusic.music.ui.utils.bounceClick
@@ -113,8 +116,6 @@ fun AppFloatingNavBar(
     pureBlack: Boolean = false,
     showPlayerAccessory: Boolean = false,
     onAccessoryClick: () -> Unit = {},
-    onAccessoryLyricsClick: (() -> Unit)? = null,
-    onAccessoryQueueClick: (() -> Unit)? = null,
     onAccessoryLongClick: (() -> Unit)? = null,
     tabContextMenu: (@Composable (Screens) -> List<IosMenuSection>)? = null,
 ) {
@@ -157,8 +158,6 @@ fun AppFloatingNavBar(
                     pureBlack = pureBlack,
                     showPlayerAccessory = showPlayerAccessory,
                     onAccessoryClick = onAccessoryClick,
-                    onAccessoryLyricsClick = onAccessoryLyricsClick,
-                    onAccessoryQueueClick = onAccessoryQueueClick,
                     onAccessoryLongClick = onAccessoryLongClick,
                     tabContextMenu = tabContextMenu,
                     searchModeActive = navSearch.visualActive,
@@ -180,8 +179,6 @@ private fun LiquidNavBarChrome(
     pureBlack: Boolean,
     showPlayerAccessory: Boolean,
     onAccessoryClick: () -> Unit,
-    onAccessoryLyricsClick: (() -> Unit)?,
-    onAccessoryQueueClick: (() -> Unit)?,
     onAccessoryLongClick: (() -> Unit)?,
     tabContextMenu: (@Composable (Screens) -> List<IosMenuSection>)?,
     searchModeActive: Boolean,
@@ -223,30 +220,21 @@ private fun LiquidNavBarChrome(
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        if (showPlayerAccessory) {
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .height(64.dp)
-                    .clip(NavBarShape)
-                    .nativeLiquidGlass(
-                        backdrop = backdrop,
-                        shape = NavBarShape,
-                        style = glassStyle,
-                    ),
-            ) {
-                FloatingMiniPlayer(
-                    isInline = false,
-                    contentColor = accessoryContentColor,
-                    onClick = onAccessoryClick,
-                    onLyricsClick = onAccessoryLyricsClick,
-                    onQueueClick = onAccessoryQueueClick,
-                    onLongClick = onAccessoryLongClick,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
+        AnimatedVisibility(
+            visible = showPlayerAccessory,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut(),
+        ) {
+            XyonCollapsedPlayer(
+                backdrop = backdrop,
+                glassStyle = glassStyle,
+                contentColor = accessoryContentColor,
+                onClick = onAccessoryClick,
+                onLongClick = onAccessoryLongClick,
+                modifier = Modifier.fillMaxWidth(),
+            )
         }
 
         LiquidBar(

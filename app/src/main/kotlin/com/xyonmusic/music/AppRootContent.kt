@@ -1206,14 +1206,6 @@ internal fun AppRootContent(
                                     pureBlack = pureBlack,
                                     showPlayerAccessory = hasDockedPlayerAccessory,
                                     onAccessoryClick = { playerBottomSheetState.expandSoft() },
-                                    onAccessoryLyricsClick = {
-                                        playerBottomSheetState.expandSoft()
-                                        playerConnection?.requestShowLyrics?.value = true
-                                    },
-                                    onAccessoryQueueClick = {
-                                        playerBottomSheetState.expandSoft()
-                                        playerConnection?.requestShowQueue?.value = true
-                                    },
                                     // Long-press the mini bar for the same quick-actions menu a
                                     // long-pressed row opens elsewhere (reference: menu pop up.jpg).
                                     onAccessoryLongClick = {
@@ -1237,10 +1229,10 @@ internal fun AppRootContent(
                                         .align(Alignment.BottomCenter)
                                         .widthIn(max = 500.dp)
                                         .padding(horizontal = AppleTokens.Gutter)
-                                        .padding(bottom = bottomInset + 8.dp)
+                                        .padding(bottom = bottomInset + 20.dp)
                                         .graphicsLayer {
                                             val hiddenOffset =
-                                                size.height + (bottomInset + 8.dp).toPx()
+                                                size.height + (bottomInset + 20.dp).toPx()
                                             val navBarHeightPx = navigationBarHeight.toPx()
                                             translationY = if (navBarHeightPx == 0f) {
                                                 hiddenOffset
