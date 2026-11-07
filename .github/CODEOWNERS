@@ -1,0 +1,6 @@
+# Every change is reviewed by the maintainer. Add owners per area as the team grows.
+*                         @mkandreumdev-creator
+
+# Release and CI changes
+/.github/                 @mkandreumdev-creator
+/version.properties       @mkandreumdev-creator
