@@ -146,21 +146,6 @@ fun AppTopBar(
                         )
                     },
                     actions = {
-                      androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .size(44.dp)
-                                .iosGlass(shape = CircleShape, spec = IosGlassSpec.Control, interactive = true)
-                                .clickable(onClick = onSearchClick),
-                        ) {
-                            IosGlyph(
-                                symbol = sf("magnifyingglass"),
-                                tint = AppTheme.colorScheme.onSurface,
-                                box = 22.dp,
-                            )
-                        }
-                        Spacer(Modifier.width(8.dp))
                         if (effectiveRoute == Screens.Library.route) {
                             LibraryTopBarActions(navController)
                         } else {
@@ -173,7 +158,6 @@ fun AppTopBar(
                                 }
                             }
                         }
-                      }
                     },
                 )
             }

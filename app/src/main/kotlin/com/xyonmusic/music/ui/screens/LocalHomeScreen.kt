@@ -175,21 +175,6 @@ fun LocalHomeScreen(
                 }
             }
 
-            val (showHomeFab) = rememberPreference(ShowHomeFabKey, true)
-            if (showHomeFab) {
-                HideOnScrollFAB(
-                    visible = localSongs.isNotEmpty(),
-                    lazyListState = lazyListState,
-                    icon = R.drawable.shuffle,
-                    onClick = {
-                        // Nothing to pick a radio from offline: shuffle the library itself.
-                        playerConnection.playQueue(
-                            ListQueue(items = localSongs.shuffled().map { it.toMediaItem() }, startIndex = 0),
-                        )
-                    },
-                    onRecognitionClick = { navController.navigate("recognition") },
-                )
-            }
         }
     }
 }

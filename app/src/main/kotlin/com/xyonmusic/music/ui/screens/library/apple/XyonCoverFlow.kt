@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -69,12 +70,40 @@ import kotlin.math.sign
  * The XyonMusic horizontal CoverFlow. [playlists] are the imported albums, in the
  * order they arrived; [onOpen] receives the tapped centre card.
  */
+/** One cover of the flow: an album or a playlist of the library. */
+data class CoverFlowEntry(
+    val key: String,
+    val title: String,
+    val subtitle: String,
+    val art: String?,
+    /** Spotify imports keep the original green subtitle. */
+    val spotify: Boolean = false,
+)
+
 @Composable
 fun ImportedAlbumsCoverFlow(
     playlists: List<Playlist>,
     onOpen: (Playlist) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val entries = playlists.map {
+        CoverFlowEntry(it.id, it.title, "Spotify · " + pluralStringResource(R.plurals.n_song, it.songCount, it.songCount), it.thumbnails.firstOrNull(), spotify = true)
+    }
+    XyonCoverFlow(entries, onOpen = { onOpen(playlists[it]) }, modifier = modifier)
+}
+
+/**
+ * The original XyonMusic horizontal CoverFlow: 65° Y tilt, 0.88 scale and shading on the neighbours.
+ * [fullScreen] fills the parent like the original landscape library; otherwise it is a 292 dp row.
+ */
+@Composable
+fun XyonCoverFlow(
+    entries: List<CoverFlowEntry>,
+    onOpen: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    fullScreen: Boolean = false,
+) {
+    val playlists = entries
     if (playlists.isEmpty()) return
     val colors = IosTheme.colors
     val density = LocalDensity.current
@@ -91,11 +120,12 @@ fun ImportedAlbumsCoverFlow(
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(292.dp),
+            .then(if (fullScreen) Modifier.fillMaxHeight() else Modifier.height(292.dp)),
     ) {
-        val cover = minOf(232.dp, maxWidth * 0.30f, maxHeight * 0.66f)
+        val cover = if (fullScreen) minOf(280.dp, maxHeight * 0.62f, maxWidth * 0.4f)
+        else minOf(232.dp, maxWidth * 0.30f, maxHeight * 0.66f)
         val coverPx = with(density) { cover.toPx() }
-        val spacing = coverPx * 0.46f
+        val spacing = coverPx * (if (fullScreen) 0.43f else 0.46f)
         val tracker = remember { VelocityTracker() }
         val placeholder = rememberNoArtworkPainter()
 
@@ -144,7 +174,7 @@ fun ImportedAlbumsCoverFlow(
                 val playlist = playlists[i]
                 val d = i - p
                 val ad = abs(d)
-                key(playlist.id) {
+                key(playlist.key) {
                     Column(
                         modifier = Modifier
                             .zIndex(-ad)
@@ -169,11 +199,11 @@ fun ImportedAlbumsCoverFlow(
                                 .shadow(18.dp, RoundedCornerShape(10.dp), clip = false)
                                 .clip(RoundedCornerShape(10.dp))
                                 .background(colors.secondarySystemFill)
-                                .pointerInput(playlist.id) {
+                                .pointerInput(playlist.key) {
                                     awaitEachTap {
                                         if (i == centered) {
                                             haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                                            onOpen(playlist)
+                                            onOpen(i)
                                         } else {
                                             scope.launch {
                                                 pos.animateTo(i.toFloat(), spring(dampingRatio = 0.85f, stiffness = 220f))
@@ -183,7 +213,7 @@ fun ImportedAlbumsCoverFlow(
                                 },
                         ) {
                             AsyncImage(
-                                model = playlist.thumbnails.firstOrNull(),
+                                model = playlist.art,
                                 contentDescription = playlist.title,
                                 contentScale = ContentScale.Crop,
                                 placeholder = placeholder,
@@ -213,11 +243,11 @@ fun ImportedAlbumsCoverFlow(
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = "Spotify · " + pluralStringResource(R.plurals.n_song, playlist.songCount, playlist.songCount),
+                            text = playlist.subtitle,
                             modifier = Modifier
                                 .width(cover)
                                 .graphicsLayer { alpha = titleAlpha },
-                            color = Color(0xFF1ED760),
+                            color = if (playlist.spotify) Color(0xFF1ED760) else colors.secondaryLabel,
                             fontFamily = SfProFontFamily,
                             fontSize = 12.sp,
                             textAlign = TextAlign.Center,

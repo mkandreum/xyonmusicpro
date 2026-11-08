@@ -86,6 +86,7 @@ import com.xyonmusic.music.ui.screens.search.DynamicSearchPlaceholder
 import com.xyonmusic.music.ui.utils.bounceClick
 import com.xyonmusic.music.ui.utils.additiveChrome
 import io.github.mkandreum.liquidbar.LiquidBar
+import io.github.mkandreum.liquidbar.LiquidBarAction
 import io.github.mkandreum.liquidbar.LiquidBarColors
 import io.github.mkandreum.liquidbar.LiquidBarFoldState
 import io.github.mkandreum.liquidbar.LiquidBarItem
@@ -96,7 +97,7 @@ import kotlinx.coroutines.delay
 
 private val NavBarShape = CircleShape
 private val NavBarSearchBarHeight = 48.dp
-private val NavBarRowHeight = 68.dp
+private val NavBarRowHeight = 64.dp
 private const val KeyboardOpenDelayMs = 260L
 
 /**
@@ -203,11 +204,11 @@ private fun LiquidNavBarChrome(
         else -> AppTheme.colorScheme.onSurface
     }
 
-    // Search lives in the top bar now; it no longer gets its own button in the bar.
-    val searchScreen: Screens? = null
+    // Search is the bar's action: last cell while open, its own circle on the right when folded (Convx).
+    val searchScreen = navigationItems.firstOrNull { it == Screens.Search }
     val tabScreens = remember(navigationItems) { navigationItems.filter { it != Screens.Search } }
     val selectedTabKey = rememberStickySelectedRoute(currentRoute, tabScreens)
-    val barScreens = remember(tabScreens, searchScreen) { tabScreens + listOfNotNull(searchScreen) }
+    val barScreens = tabScreens
     val selectedIndex = barScreens.indexOfFirst { it.route == selectedTabKey }.coerceAtLeast(0)
 
     var heldTab by remember { mutableStateOf<Pair<Screens, Rect>?>(null) }
@@ -271,8 +272,24 @@ private fun LiquidNavBarChrome(
             },
             // Same dynamic as the Convx bar: the mini player sits above the tabs and, when the
             // bar folds on scroll, slides down into the row beside the tab circle.
+            action = searchScreen?.let { screen ->
+                LiquidBarAction(
+                    label = stringResource(screen.titleId),
+                    iconContent = { tint ->
+                        SymbolIcon(
+                            symbol = sf("magnifyingglass"),
+                            contentDescription = stringResource(screen.titleId),
+                            size = screen.glyphSize() * 0.8f,
+                            chrome = 0f,
+                            tint = tint,
+                            mode = SfRenderingMode.Monochrome,
+                        )
+                    },
+                    onClick = { if (searchModeActive) navSearch.onTapBar() else navSearch.onTapSearchIcon() },
+                )
+            },
             accessory = if (showPlayerAccessory) {
-                {
+                { inline, expanded ->
                     XyonCollapsedPlayer(
                         backdrop = backdrop,
                         glassStyle = glassStyle,
@@ -280,6 +297,8 @@ private fun LiquidNavBarChrome(
                         onClick = onAccessoryClick,
                         onLongClick = onAccessoryLongClick,
                         modifier = Modifier.fillMaxSize(),
+                        inline = inline,
+                        expanded = expanded,
                     )
                 }
             } else null,

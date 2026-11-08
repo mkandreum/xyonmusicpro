@@ -175,7 +175,7 @@ class WelcomeActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = Color(0xFF05060A)
                 ) {
-                    WelcomePagerScreen(onFinished = {
+                    com.xyonmusic.music.ui.onboarding.XyonOnboarding(onFinished = {
                         lifecycleScope.launch {
                             dataStore.edit { it[IsFirstRunKey] = false }
                             if (forceShow) {

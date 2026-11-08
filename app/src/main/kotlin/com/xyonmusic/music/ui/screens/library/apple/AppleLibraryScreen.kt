@@ -5,6 +5,7 @@
 
 package com.xyonmusic.music.ui.screens.library.apple
 
+import androidx.compose.foundation.layout.systemBarsPadding
 import com.xyonmusic.music.ui.component.sf
 import android.content.Intent
 import androidx.compose.foundation.Canvas
@@ -172,6 +173,38 @@ fun AppleLibraryScreen(
             is Playlist -> navController.navigate(localPlaylistRoute(item.id, item.thumbnails.firstOrNull()))
             else -> Unit
         }
+    }
+
+    if (landscape) {
+        val albums by viewModel.localAlbums.collectAsStateWithLifecycle()
+        val playlistsAll by viewModel.allPlaylists.collectAsStateWithLifecycle()
+        val entries = remember(albums, playlistsAll) {
+            (albums.map { a ->
+                CoverFlowEntry("a:" + a.id, a.title, a.artists.joinToString { it.name }, a.thumbnailUrl) to (a as LocalItem)
+            } + playlistsAll.map { pl ->
+                val spotify = pl.id.startsWith("SPOTIFY_")
+                CoverFlowEntry("p:" + pl.id, pl.title, if (spotify) "Spotify" else "", pl.thumbnails.firstOrNull(), spotify = spotify) to (pl as LocalItem)
+            }).sortedBy { it.first.title.lowercase() }
+        }
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(colors.systemBackground)
+                .systemBarsPadding()
+                .padding(vertical = 12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (entries.isEmpty()) {
+                Text(stringResource(R.string.filter_library), color = colors.secondaryLabel)
+            } else {
+                XyonCoverFlow(
+                    entries = entries.map { it.first },
+                    onOpen = { i -> open(entries[i].second) },
+                    fullScreen = true,
+                )
+            }
+        }
+        return
     }
 
     val pageInsets = LocalPlayerAwareWindowInsets.current.asPaddingValues()

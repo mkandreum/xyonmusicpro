@@ -294,4 +294,12 @@
     <string name="library_view_menu">Vista</string>
     <string name="library_view_songs">Lista de canciones</string>
     <string name="library_view_sections">Secciones</string>
+    <string name="onb_tagline">Tu música, en cristal.</string>
+    <string name="onb_start">Empezar</string>
+    <string name="onb_perm_title">Una última cosa</string>
+    <string name="onb_perm_body">Permite las notificaciones para controlar la música desde la pantalla de bloqueo.</string>
+    <string name="onb_allow">Permitir</string>
+    <string name="onb_allowed">Permitido</string>
+    <string name="onb_done">Entrar en XyonMusic</string>
+    <string name="onb_install_body">Permite instalar actualizaciones desde la app.</string>
 </resources>

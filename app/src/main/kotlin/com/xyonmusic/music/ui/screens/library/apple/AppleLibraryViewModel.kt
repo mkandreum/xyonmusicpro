@@ -60,6 +60,10 @@ class AppleLibraryViewModel @Inject constructor(
         list.filter { !local || it.playlist.browseId == null }.distinctBy { it.id }
     }
 
+    /** Every library playlist, for the landscape CoverFlow. */
+    val allPlaylists: StateFlow<List<Playlist>> = playlists
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /** Playlists mirrored from Spotify by the importer, newest first. */
     val importedPlaylists: StateFlow<List<Playlist>> = playlists
         .map { list -> list.filter { it.id.startsWith("SPOTIFY_") } }

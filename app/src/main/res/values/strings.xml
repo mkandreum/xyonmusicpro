@@ -770,4 +770,12 @@
     <string name="library_view_menu">View</string>
     <string name="library_view_songs">Songs list</string>
     <string name="library_view_sections">Sections</string>
+    <string name="onb_tagline">Your music, in glass.</string>
+    <string name="onb_start">Start</string>
+    <string name="onb_perm_title">One last thing</string>
+    <string name="onb_perm_body">Allow notifications to control playback from the lock screen.</string>
+    <string name="onb_allow">Allow</string>
+    <string name="onb_allowed">Allowed</string>
+    <string name="onb_done">Enter XyonMusic</string>
+    <string name="onb_install_body">Allow installing updates from the app.</string>
 </resources>

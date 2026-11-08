@@ -646,13 +646,18 @@ internal fun AppRootContent(
                 com.xyonmusic.music.constants.ChipSortTypeKey,
                 com.xyonmusic.music.constants.LibraryFilter.LIBRARY,
             )
-            LaunchedEffect(effectiveRoute, listenTogetherInTopBar, showRail, libraryFilter) {
+            // As in the original XyonMusic: rotate the phone on the Library and the whole screen
+            // becomes the horizontal CoverFlow, with no bars over it.
+            val landscapeCoverFlow = isLandscape && effectiveRoute == Screens.Library.route &&
+                libraryFilter == com.xyonmusic.music.constants.LibraryFilter.LIBRARY
+            LaunchedEffect(effectiveRoute, listenTogetherInTopBar, showRail, libraryFilter, landscapeCoverFlow) {
                 val isListenTogetherScreen = effectiveRoute == Screens.ListenTogether.route ||
                     currentRoute == "listen_together_from_topbar"
                 shouldShowTopBar = effectiveRoute in topLevelScreens &&
                     effectiveRoute != "settings" &&
                     !(effectiveRoute == Screens.Library.route && libraryFilter != com.xyonmusic.music.constants.LibraryFilter.LIBRARY) &&
-                    !(isListenTogetherScreen && listenTogetherInTopBar)
+                    !(isListenTogetherScreen && listenTogetherInTopBar) &&
+                    !landscapeCoverFlow
             }
 
             val coroutineScope = rememberCoroutineScope()
@@ -861,7 +866,6 @@ internal fun AppRootContent(
                                 accountName = sidebarAccountName,
                                 navController = navController,
                                 onAccountClick = onAccountClick,
-                                onSearchClick = enterSearch,
                             )
                         },
                     bottomBar = {
@@ -1136,7 +1140,7 @@ internal fun AppRootContent(
                         .fillMaxSize()
                         .iosSheetPresentation(playerLayerPresentation, statusBarTop)
                 ) {
-                    if (!showRail && !showSettingDialoge && currentRoute?.startsWith("settings/") != true && AppRoutePolicy.showsPlayer(currentRoute)) {
+                    if (!showRail && !landscapeCoverFlow && !showSettingDialoge && currentRoute?.startsWith("settings/") != true && AppRoutePolicy.showsPlayer(currentRoute)) {
                         Box(Modifier.fillMaxSize()) {
                             // Apple Music-style progressive scrim
                             if (appleMusicUi && isGlassAllowed()) {
