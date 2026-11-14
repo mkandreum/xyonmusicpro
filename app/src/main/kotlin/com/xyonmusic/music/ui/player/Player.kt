@@ -569,6 +569,8 @@ fun BottomSheetPlayer(
         }
 
     LaunchedEffect(ambientMetadata?.id, playerBackground, videoLook) {
+        // Old skins only: the glass player takes its own colour from the artwork.
+        if (!isPreviewOnly) return@LaunchedEffect
         if (playerBackground == PlayerBackgroundStyle.GRADIENT || playerBackground == PlayerBackgroundStyle.GLOW_ANIMATED) {
             val currentMetadata = ambientMetadata ?: return@LaunchedEffect
             val look = videoLook
@@ -597,6 +599,7 @@ fun BottomSheetPlayer(
 
     // Precompute the next track's colors so its backdrop can transition immediately.
     LaunchedEffect(mediaMetadata?.id, playerBackground) {
+        if (!isPreviewOnly) return@LaunchedEffect
         val player = playerConnection.player
         val nextIndex = player.nextMediaItemIndex
         if (nextIndex == C.INDEX_UNSET || nextIndex >= player.mediaItemCount) return@LaunchedEffect
@@ -916,7 +919,7 @@ fun BottomSheetPlayer(
             // Queue views because it sits outside each skin's AnimatedContent.
             val stickersHidden = if (useAppleMusicPlayer) !v17ShowingCover else classicPages.showing
             AnimatedVisibility(
-                visible = showDiyStickers && !stickersHidden && !state.isCollapsed,
+                visible = isPreviewOnly && showDiyStickers && !stickersHidden && !state.isCollapsed,
                 enter = fadeIn(Motion.appear()),
                 exit = fadeOut(Motion.appear()),
             ) {
@@ -941,6 +944,11 @@ fun BottomSheetPlayer(
             }
         },
         background = {
+            // The glass player paints its own background; skip the old skins' capture, blur and canvas.
+            if (!isPreviewOnly) {
+                Box(Modifier.fillMaxSize().background(Color.Black))
+                return@BottomSheet
+            }
             val glassConfig = LocalGlassEffectConfig.current
             // Only GLASS uses the full-screen capture and blur chain.
             // The V2 player uses a dark artwork tint to keep its bright controls legible.
@@ -1579,6 +1587,11 @@ fun BottomSheetPlayer(
             }
         },
     ) {
+        // The new all-glass player (GlassNowPlaying) replaces both older skins.
+        if (!isPreviewOnly) {
+            GlassNowPlaying(state = state, navController = navController)
+            return@BottomSheet
+        }
         if (useAppleMusicPlayer) {
             // Menus/popovers inside the player sample the player's own backdrop, not the
             // app root under the sheet (that showed the Home screen through the glass).

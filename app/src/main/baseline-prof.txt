@@ -11,3 +11,5 @@ HSPLcom/xyonmusic/music/**->**(**)**
 Lcom/xyonmusic/music/**;
 HSPLcom/music/innertube/**->**(**)**
 Lcom/music/innertube/**;
+HSPLio/github/mkandreum/liquidbar/**->**(**)**
+Lio/github/mkandreum/liquidbar/**;

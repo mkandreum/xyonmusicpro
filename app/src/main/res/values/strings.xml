@@ -778,4 +778,8 @@
     <string name="onb_allowed">Allowed</string>
     <string name="onb_done">Enter XyonMusic</string>
     <string name="onb_install_body">Allow installing updates from the app.</string>
+    <string name="tab_songs">Songs</string>
+    <string name="tab_playlists">Playlists</string>
+    <string name="tab_downloads">Downloads</string>
+    <string name="tab_discover">Discover</string>
 </resources>

@@ -5,6 +5,7 @@
 
 package com.xyonmusic.music.ui.screens.library.apple
 
+import androidx.compose.foundation.border
 import com.xyonmusic.music.ui.utils.sharedArtworkSource
 
 import com.xyonmusic.music.ui.component.sf
@@ -149,6 +150,9 @@ import kotlinx.coroutines.launch
 // Shared subpage header: the large title scrolls beneath the toolbar and fades into its
 // compact title. The toolbar also provides a back button and optional trailing actions.
 
+/** True when a library list is shown as a bar tab: no back button and no back handling. */
+val LocalSubpageIsTab = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 @Composable
 internal fun AppleSubpage(
     title: String,
@@ -159,7 +163,8 @@ internal fun AppleSubpage(
     overlay: @Composable BoxScope.() -> Unit = {},
     content: LazyListScope.() -> Unit,
 ) {
-    BackHandler(onBack = onBack)
+    val isTab = LocalSubpageIsTab.current
+    BackHandler(enabled = !isTab, onBack = onBack)
     val colors = IosTheme.colors
     val haze = remember { HazeState() }
     val statusTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -198,7 +203,7 @@ internal fun AppleSubpage(
             item(key = LargeTitleKey, contentType = "large_title") {
                 Text(
                     text = title,
-                    style = SfStyle(34.sp, 41.sp, FontWeight.Bold, (-0.6).sp),
+                    style = SfStyle(34.sp, 41.sp, FontWeight.Bold, (-0.6).sp).copy(fontFamily = com.xyonmusic.music.ui.theme.DisplayFontFamily),
                     color = colors.label,
                     maxLines = 1,
                     modifier = Modifier.padding(start = titleGutter, end = 16.dp, top = 10.dp, bottom = 10.dp),
@@ -223,7 +228,7 @@ internal fun AppleSubpage(
             titleColor = colors.label,
             leadingInset = sideInset + titleGutter,
             leading = {
-                ToolbarCapsule(onClick = onBack, clearBackdrop = true) {
+                if (!isTab) ToolbarCapsule(onClick = onBack, clearBackdrop = true) {
                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 10.dp, end = 14.dp)) {
                         IosGlyph(sf("SFChevronLeft"), ToolbarGlyphColor(), 18.dp)
                         Spacer(Modifier.width(3.dp))
@@ -570,6 +575,9 @@ fun AppleSongsPage(navController: NavController, onBack: () -> Unit, viewModel: 
     androidx.compose.runtime.LaunchedEffect(permission.granted) { if (permission.granted) viewModel.scanDevice() }
     var sortType by rememberEnumPreference(SongSortTypeKey, SongSortType.CREATE_DATE)
     var descending by rememberPreference(SongSortDescendingKey, true)
+    // Earlier downloads predate "downloads join the library": bring them in once.
+    val db = LocalDatabase.current.get()
+    androidx.compose.runtime.LaunchedEffect(Unit) { db.query { addDownloadedToLibrary(System.currentTimeMillis()) } }
     AppleSongList(
         title = stringResource(R.string.filter_songs),
         songs = songs,
@@ -708,6 +716,15 @@ private fun AppleSongList(
 ) {
     val playerConnection = LocalPlayerConnection.current
     val state = rememberLazyListState()
+    val allSongs = songs
+    // Live filter from the glass search field under the title.
+    var query by remember { mutableStateOf("") }
+    @Suppress("NAME_SHADOWING")
+    val songs = remember(allSongs, query) {
+        val q = query.trim().lowercase()
+        if (q.isEmpty()) allSongs
+        else allSongs.filter { s -> s.song.title.lowercase().contains(q) || s.artists.any { it.name.lowercase().contains(q) } }
+    }
 
     // By title, Apple groups under letter headers.
     val sections = remember(songs, sortType) {
@@ -763,12 +780,12 @@ private fun AppleSongList(
             return@AppleSubpage
         }
         if (header != null) item(key = "folders", contentType = "folders") { header() }
-        // Keep play and shuffle actions together above the song list.
-        item(key = "buttons", contentType = "buttons") {
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                PlayButton(sf("SFPlayFill"), stringResource(R.string.play), Modifier.weight(1f)) { play(0) }
-                PlayButton(sf("SFShuffle"), stringResource(R.string.shuffle), Modifier.weight(1f)) { play(0, shuffle = true) }
-            }
+        // Glass search field, then a single "download what is missing" action when it applies.
+        item(key = "search", contentType = "search") {
+            GlassSearchField(query, { query = it }, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        }
+        item(key = "downloadMissing", contentType = "download") {
+            DownloadMissingButton(allSongs, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
         }
         if (sections != null) {
             var offset = 0
@@ -845,6 +862,11 @@ private fun SongRow(song: Song, navController: NavController, onPlay: () -> Unit
             subtitle = song.artists.joinToString { it.name },
             chevron = false,
             trailing = {
+                // Downloaded songs carry a small mark, so a separate Downloads tab is not needed.
+                if (song.song.isDownloaded) {
+                    IosGlyph(sf("SFArrowDownCircle"), IosTheme.colors.secondaryLabel, 16.dp)
+                    Spacer(Modifier.width(4.dp))
+                }
                 Box {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -869,6 +891,75 @@ private fun SongRow(song: Song, navController: NavController, onPlay: () -> Unit
     }
     if (entries.addToPlaylist.value) {
         AddToPlaylistDialog(isVisible = true, onGetSong = { listOf(song.id) }, onDismiss = { entries.addToPlaylist.value = false })
+    }
+}
+
+/** Frosted glass search capsule: translucent fill, light rim, search glyph and an inline field. */
+@Composable
+private fun GlassSearchField(value: String, onValueChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    val colors = IosTheme.colors
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(22.dp)
+    Row(
+        modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .clip(shape)
+            .background(colors.label.copy(alpha = 0.06f))
+            .border(1.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(colors.label.copy(alpha = 0.14f), colors.label.copy(alpha = 0.04f))), shape)
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IosGlyph(sf("magnifyingglass"), colors.secondaryLabel, 18.dp)
+        Spacer(Modifier.width(10.dp))
+        Box(Modifier.weight(1f)) {
+            if (value.isEmpty()) Text("Buscar en canciones", style = SfStyle(16.sp, 20.sp), color = colors.secondaryLabel)
+            androidx.compose.foundation.text.BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = SfStyle(16.sp, 20.sp).copy(color = colors.label),
+                cursorBrush = androidx.compose.ui.graphics.SolidColor(IosTheme.tint),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
+        if (value.isNotEmpty()) {
+            Box(Modifier.size(28.dp).clip(CircleShape).clickable { onValueChange("") }, contentAlignment = Alignment.Center) {
+                IosGlyph(sf("xmark.circle.fill"), colors.secondaryLabel, 16.dp)
+            }
+        }
+    }
+}
+
+/**
+ * Download action for the whole list: "Descargar todas" when nothing is downloaded, "Descargar las N que faltan"
+ * when only some are, and nothing at all once every song is on the phone.
+ */
+@Composable
+private fun DownloadMissingButton(songs: List<Song>, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
+    val downloadUtil = LocalDownloadUtil.current.get()
+    val downloads by downloadUtil.downloads.collectAsStateWithLifecycle()
+    val online = songs.filterNot { it.song.isLocal }
+    val missing = online.filter { s ->
+        !s.song.isDownloaded && downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_COMPLETED &&
+            downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING &&
+            downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_QUEUED
+    }
+    if (missing.isEmpty()) return
+    val label = if (missing.size == online.size) "Descargar todas" else "Descargar las ${missing.size} que faltan"
+    Row(
+        modifier
+            .clip(CircleShape)
+            .background(IosTheme.tint.copy(alpha = 0.12f))
+            .clickable {
+                downloadSongs(context, missing.map { DownloadTarget(it.id, it.song.title, it.artists.firstOrNull()?.name) }, downloadUtil.downloads.value)
+            }
+            .padding(horizontal = 14.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IosGlyph(sf("SFArrowDownToLine"), IosTheme.tint, 16.dp)
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = SfStyle(15.sp, 20.sp, FontWeight.SemiBold), color = IosTheme.tint)
     }
 }
 

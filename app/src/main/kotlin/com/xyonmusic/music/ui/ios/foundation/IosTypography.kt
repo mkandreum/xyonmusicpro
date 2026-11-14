@@ -44,8 +44,9 @@ fun iosTypography(fontFamily: FontFamily = FontFamily.Default): IosTypography {
 
     // Use stronger weights, tighter large-title tracking, and explicit line height
     // to keep Apple Music-style titles distinct and readable.
+    // Titles use the display face (Chillax); everything else the text face.
     fun display(size: Int, weight: FontWeight, tracking: Float) = TextStyle(
-        fontFamily = fontFamily,
+        fontFamily = if (size >= 20) com.xyonmusic.music.ui.theme.DisplayFontFamily else fontFamily,
         fontSize = size.sp,
         lineHeight = (size * 1.2f).sp,
         fontWeight = weight,

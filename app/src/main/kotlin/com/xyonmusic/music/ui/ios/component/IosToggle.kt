@@ -73,7 +73,7 @@ fun IosToggle(
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             if (label != null) IosText(label)
-            IosSwitchTrack(checked, onColor, enabled)
+            io.github.mkandreum.liquidbar.ui.LiquidToggle(checked = checked, onCheckedChange = onCheckedChange, accent = onColor, enabled = enabled)
         }
 
         IosToggleStyle.Checkbox -> Row(

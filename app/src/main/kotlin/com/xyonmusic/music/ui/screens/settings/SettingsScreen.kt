@@ -5,6 +5,8 @@
 
 package com.xyonmusic.music.ui.screens.settings
 
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.border
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
@@ -93,18 +95,21 @@ import androidx.compose.ui.res.painterResource
 import com.xyonmusic.music.viewmodels.HomeViewModel
 
 /** Root rows that open a page directly rather than a category. */
-private val historyLink = SettingsLink("History", R.drawable.music_history, { systemCyan }, SettingsAction.Route("history"))
-private val statsLink = SettingsLink("Stats", R.drawable.stats, { systemYellow }, SettingsAction.Route("stats"))
-private val listenTogetherLink = SettingsLink("Listen Together", R.drawable.group, { systemCyan }, SettingsAction.Route("listen_together_from_topbar"))
-private val updateLink = SettingsLink("Software Update", R.drawable.network_update, { systemGray }, SettingsAction.Route("settings/update"))
+private val historyLink = SettingsLink("Historial", R.drawable.music_history, { systemCyan }, SettingsAction.Route("history"))
+private val statsLink = SettingsLink("Estadísticas", R.drawable.stats, { systemYellow }, SettingsAction.Route("stats"))
+private val listenTogetherLink = SettingsLink("Escuchar juntos", R.drawable.group, { systemCyan }, SettingsAction.Route("listen_together_from_topbar"))
+private val updateLink = SettingsLink("Actualizaciones", R.drawable.network_update, { systemGray }, SettingsAction.Route("settings/update"))
 
 /** The root, grouped the way the categories are read: what you hear, what you see, your stuff, help. */
 private val rootGroups = listOf(
-    listOf(listenTogetherLink),
-    listOf(SettingsHubs.player.asLink(), SettingsHubs.playback.asLink(), SettingsHubs.appearance.asLink()),
-    listOf(SettingsHubs.library.asLink(), SettingsHubs.accounts.asLink()),
-    listOf(SettingsHubs.privacy.asLink(), historyLink, statsLink),
-    listOf(updateLink, SettingsHubs.help.asLink()),
+    listOf(
+        SettingsHubs.accounts.asLink(),
+        SettingsHubs.playbackAll.asLink(),
+        SettingsHubs.appearance.asLink(),
+        SettingsHubs.storageAll.asLink(),
+        SettingsHubs.help.asLink(),
+    ),
+    listOf(updateLink),
 )
 
 /** Wider than this, the root becomes a sidebar with the chosen category beside it. */
@@ -249,7 +254,7 @@ private fun SearchResults(entries: List<SearchEntry>, query: String, onAction: (
     }
     if (hits.isEmpty()) {
         Text(
-            "No settings found for “${query.trim()}”",
+            "Sin resultados para “${query.trim()}”",
             style = IosTheme.typography.body,
             color = IosTheme.colors.secondaryLabel,
             textAlign = TextAlign.Center,
@@ -259,7 +264,7 @@ private fun SearchResults(entries: List<SearchEntry>, query: String, onAction: (
     }
     // Results keep their category so "Background" under Player reads differently from a home background.
     SettingsLinkCard(
-        title = "${hits.size} result${if (hits.size == 1) "" else "s"}",
+        title = "${hits.size} resultado${if (hits.size == 1) "" else "s"}",
         links = hits.map { it.link.copy(subtitle = it.category + (it.link.subtitle?.let { s -> " · $s" } ?: "")) },
         onAction = onAction,
     )
@@ -301,30 +306,45 @@ private fun LocalOnlyRow() {
 @Composable
 private fun ProfileCard(accountName: String, accountImageUrl: String?, onClick: () -> Unit) {
     val signedIn = accountName.isNotBlank() && !accountName.equals("Guest", ignoreCase = true)
+    // Profile hero: tinted glass card, large avatar with a light ring, name in the display face.
+    val heroShape = ContinuousRoundedRectangle(30.dp)
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(ContinuousRoundedRectangle(20.dp))
-            .background(IosTheme.colors.secondarySystemGroupedBackground)
+            .clip(heroShape)
+            .background(
+                androidx.compose.ui.graphics.Brush.linearGradient(
+                    listOf(IosTheme.tint.copy(alpha = 0.22f), IosTheme.colors.secondarySystemGroupedBackground, IosTheme.colors.secondarySystemGroupedBackground)
+                )
+            )
+            .border(1.dp, androidx.compose.ui.graphics.Brush.verticalGradient(listOf(Color.White.copy(alpha = 0.22f), Color.White.copy(alpha = 0.04f))), heroShape)
             .iosRowPress(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 18.dp, vertical = 20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AccountAvatar(
-            imageUrl = accountImageUrl.takeIf { signedIn },
-            name = accountName.takeIf { signedIn }.orEmpty(),
-            size = 60.dp,
-        )
+        Box(
+            Modifier
+                .size(80.dp)
+                .border(2.dp, androidx.compose.ui.graphics.Brush.sweepGradient(listOf(IosTheme.tint, Color.White.copy(alpha = 0.6f), IosTheme.tint)), CircleShape)
+                .padding(5.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            AccountAvatar(
+                imageUrl = accountImageUrl.takeIf { signedIn },
+                name = accountName.takeIf { signedIn }.orEmpty(),
+                size = 70.dp,
+            )
+        }
         Column(Modifier.weight(1f).padding(start = 16.dp)) {
             Text(
-                if (signedIn) accountName else "Sign in",
-                style = IosTheme.typography.title3,
+                if (signedIn) accountName else "Iniciar sesión",
+                style = IosTheme.typography.title2,
                 fontWeight = FontWeight.SemiBold,
                 color = IosTheme.colors.label,
                 maxLines = 1,
             )
             Text(
-                if (signedIn) "YouTube Music, sync and more" else "YouTube Music, Spotify and more",
+                if (signedIn) "YouTube Music, sincronización y más" else "YouTube Music, Spotify y más",
                 style = IosTheme.typography.footnote,
                 color = IosTheme.colors.secondaryLabel,
                 maxLines = 1,

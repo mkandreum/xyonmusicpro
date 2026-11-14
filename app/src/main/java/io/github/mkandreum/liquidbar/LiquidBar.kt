@@ -177,49 +177,15 @@ fun LiquidBar(
     actionSpacing: Dp = 10.dp,
     /** Pulsación larga sobre una pestaña, con el rectángulo de su celda para anclar un menú. */
     onItemLongClick: ((Int, Rect) -> Unit)? = null,
-    /**
-     * Mini reproductor: abierta, va encima de la cápsula; al plegar baja a la fila y ocupa el hueco entre
-     * el círculo de la pestaña y el borde derecho (o el círculo de la acción), con el mismo muelle.
-     */
-    accessory: (@Composable (inline: () -> Float, expanded: () -> Float) -> Unit)? = null,
-    accessoryHeight: Dp = 52.dp,
-    /** Alto de la fila plegada: círculo de la pestaña, mini reproductor y círculo de la acción. */
-    foldedHeight: Dp = 48.dp,
 ) {
     val folded = foldState?.folded == true
-    val presence by animateFloatAsState(
-        if (accessory != null) 1f else 0f,
-        spring(dampingRatio = 0.8f, stiffness = 380f),
-        label = "liquidAccessory",
-    )
-    val lastAccessory = remember { mutableStateOf(accessory) }
-    if (accessory != null) lastAccessory.value = accessory
-    // Igual que la barra de Convx: no hay morfing de la cápsula, sino un fundido entre la barra abierta y
-    // la fila plegada (AnimatedContent: fadeOut 90 ms, fadeIn 220 ms tras 90 ms), el mini reproductor viaja
-    // como elemento compartido (muelle sin rebote, StiffnessMediumLow) y un gooey de 300 ms con pico a
-    // mitad funde y separa las formas.
     val fold = remember { Animatable(if (folded) 1f else 0f) }
-    val openAlpha = remember { Animatable(if (folded) 0f else 1f) }
-    val foldAlpha = remember { Animatable(if (folded) 1f else 0f) }
-    val goo = remember { Animatable(0f) }
     LaunchedEffect(folded) {
-        launch {
-            fold.animateTo(
-                if (folded) 1f else 0f,
-                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
-            )
-        }
-        launch {
-            openAlpha.animateTo(if (folded) 0f else 1f, if (folded) tween(90) else tween(220, delayMillis = 90))
-        }
-        launch {
-            foldAlpha.animateTo(if (folded) 1f else 0f, if (folded) tween(220, delayMillis = 90) else tween(90))
-        }
-        launch {
-            goo.snapTo(0f)
-            goo.animateTo(1f, tween(150, easing = FastOutSlowInEasing))
-            goo.animateTo(0f, tween(150, easing = LinearEasing))
-        }
+        fold.animateTo(
+            if (folded) 1f else 0f,
+            if (folded) tween(LiquidMotion.FoldMs, easing = LiquidMotion.FoldEasing)
+            else tween(LiquidMotion.UnfoldMs, easing = LiquidMotion.UnfoldEasing)
+        )
     }
     val scope = rememberCoroutineScope()
     val selectedGlow = remember(scope) { GlassGlow(scope) }
@@ -228,7 +194,7 @@ fun LiquidBar(
     val detached = action != null && detachAction
     val cells = items.size + if (action != null && !detached) 1 else 0
     // Opacidad del círculo de la acción: siempre visible si va separada; si no, aparece al plegar.
-    val actionAlpha: () -> Float = { if (detached) 1f else foldAlpha.value }
+    val actionAlpha: () -> Float = { if (detached) 1f else fold.value.coerceIn(0f, 1f) }
     val selected = items.getOrNull(selectedIndex)
     val noRipple = remember { MutableInteractionSource() }
 
@@ -255,14 +221,11 @@ fun LiquidBar(
     }
 
     Layout(
-        modifier = modifier.fillMaxWidth().gooey {
-            GooeyPeakBlur.toPx() * goo.value
-        },
+        modifier = modifier.fillMaxWidth().height(rowHeight),
         content = {
-            // 0 · el cristal de la cápsula abierta
+            // 0 · el cristal de la cápsula (y del círculo izquierdo cuando se pliega)
             Box(
                 Modifier
-                    .graphicsLayer { alpha = openAlpha.value }
                     .graphicsLayer(elasticStretch(selectedGlow))
                     .glassSource(surfaceBackdrop)
                     .liquidGlass(backdrop, CircleShape, glass)
@@ -271,7 +234,16 @@ fun LiquidBar(
             // 1 · todas las pestañas a su anchura de reposo, recortadas por la cápsula que encoge
             Box(
                 Modifier
-                    .graphicsLayer { alpha = openAlpha.value }
+                    .graphicsLayer { alpha = (1f - fold.value.coerceIn(0f, 1f) * 3f).coerceIn(0f, 1f) }
+                    .drawWithContent {
+                        val p = fold.value.coerceIn(0f, 1f)
+                        if (p == 0f) drawContent()
+                        else {
+                            val w = lerp(size.width, size.height, p)
+                            val clip = Path().apply { addRoundRect(RoundRect(0f, 0f, w, size.height, CornerRadius(size.height / 2f))) }
+                            clipPath(clip) { this@drawWithContent.drawContent() }
+                        }
+                    }
                     .then(if (folded) Modifier.clearAndSetSemantics {} else Modifier)
             ) {
                 LiquidTabGroup(
@@ -316,18 +288,15 @@ fun LiquidBar(
             Box(
                 Modifier
                     .graphicsLayer(elasticStretch(selectedGlow))
-                    .graphicsLayer { alpha = foldAlpha.value }
-                    .liquidGlass(backdrop, CircleShape, glass)
+                    .graphicsLayer { alpha = fold.value.coerceIn(0f, 1f) }
                     .then(
                         if (folded) Modifier.then(selectedGlow.gestureModifier)
                             .clickable(noRipple, null, onClickLabel = "Mostrar pestañas") { foldState?.unfold() }
                         else Modifier.clearAndSetSemantics {}
                     )
             ) {
-                if (selected != null) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    val glyph = Modifier.size(LiquidBarDefaults.IconSlot * 0.8f).glyphBounce(true, folded)
-                    if (selected.iconContent != null) Box(glyph) { selected.iconContent(colors.accent) }
-                    else if (selected.icon != null) Icon(selected.icon, selected.label, tint = colors.accent, modifier = glyph)
+                if (selected != null) FoldingCell(titleFraction = { 1f - fold.value.coerceIn(0f, 1f) }) {
+                    cell(selected.icon, selected.iconContent, selected.label, colors.accent, true, true)
                 }
             }
             // 3 · cristal propio de la acción, solo separada
@@ -355,76 +324,39 @@ fun LiquidBar(
                         val glyph = Modifier.size(LiquidBarDefaults.IconSlot * 0.9f).glyphBounce(false, folded)
                         if (action.iconContent != null) Box(glyph) { action.iconContent(tint) }
                         else if (action.icon != null) Icon(action.icon, action.label, tint = tint, modifier = glyph)
-                    } else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        val glyph = Modifier.size(LiquidBarDefaults.IconSlot * 0.8f).glyphBounce(false, folded)
-                        if (action.iconContent != null) Box(glyph) { action.iconContent(tint) }
-                        else if (action.icon != null) Icon(action.icon, action.label, tint = tint, modifier = glyph)
+                    } else FoldingCell(titleFraction = { 1f - fold.value.coerceIn(0f, 1f) }) {
+                        cell(action.icon, action.iconContent, action.label, tint, false, false)
                     }
                 }
-            }
-            // 5 · el mini reproductor: encima al abrir, en la fila al plegar
-            val shown = lastAccessory.value
-            if (shown != null && presence > 0.001f) {
-                Box(
-                    Modifier
-                        .graphicsLayer { alpha = presence }
-                        .then(if (accessory == null) Modifier.clearAndSetSemantics {} else Modifier)
-                ) { shown({ foldAlpha.value }, { openAlpha.value }) }
             }
         }
     ) { m, constraints ->
         val width = constraints.maxWidth
         val height = rowHeight.roundToPx()
-        val foldedH = foldedHeight.roundToPx().coerceAtMost(height)
-        val p = fold.value
-        val circle = foldedH
+        val circle = height.coerceAtMost(width)
         val inset = 4.dp.toPx()
-        val gap = actionSpacing.roundToPx()
         // Con la acción separada, la cápsula abierta deja sitio al círculo de la derecha.
-        val openWidth = if (detached) (width - height - gap).coerceAtLeast(height) else width
+        val openWidth = if (detached) (width - circle - actionSpacing.roundToPx()).coerceAtLeast(circle) else width
         val tabWidth = (openWidth - 2 * inset) / cells.coerceAtLeast(1)
+        val p = fold.value
+        val navWidth = lerp(openWidth.toFloat(), circle.toFloat(), p).roundToInt().coerceIn(circle, openWidth)
+        val selectedX = lerp(inset + tabWidth * (selectedIndex + 0.5f) - circle / 2f, 0f, p).roundToInt()
+        val actionX = if (detached) width - circle
+        else lerp(inset + tabWidth * (cells - 0.5f) - circle / 2f, (width - circle).toFloat(), p).roundToInt()
 
-        val surface = m[0].measure(Constraints.fixed(openWidth, height))
+        val surface = m[0].measure(Constraints.fixed(navWidth, height))
         val group = m[1].measure(Constraints.fixed(openWidth, height))
-        val single = m[2].measure(Constraints.fixed(circle, circle))
-        val actionSize = if (detached) height else circle
-        val actionSurface = m[3].measure(Constraints.fixed(actionSize, actionSize))
-        val actionControl = m[4].measure(Constraints.fixed(actionSize, actionSize))
-
-        val hasAcc = m.size > 5
-        val accFull = accessoryHeight.roundToPx()
-        val accOpenH = if (hasAcc) (accFull * presence).roundToInt() else 0
-        val gapOpen = if (hasAcc) (gap * presence).roundToInt() else 0
-        val openH = accOpenH + gapOpen + height
-        // El contenedor cambia de alto con el mismo muelle (el sizeTransform de AnimatedContent).
-        val totalH = lerp(openH.toFloat(), foldedH.toFloat(), p).roundToInt().coerceAtLeast(foldedH)
-        // Todo va alineado abajo, como el AnimatedContent de Convx (BottomCenter).
-        val openTop = totalH - openH
-        val barY = totalH - height
-        val rowY = totalH - foldedH
-        val rightReserved = if (action != null) circle + gap else 0
-        val accW = lerp(width.toFloat(), (width - circle - gap - rightReserved).toFloat(), p).roundToInt().coerceAtLeast(1)
-        val accX = lerp(0f, (circle + gap).toFloat(), p).roundToInt()
-        val accH = lerp(accFull.toFloat(), foldedH.toFloat(), p).roundToInt().coerceAtLeast(1)
-        val accY = lerp(openTop.toFloat(), rowY.toFloat(), p).roundToInt()
-        val acc = if (hasAcc) m[5].measure(Constraints.fixed(accW, accH)) else null
-        val actionOpenX = inset + tabWidth * (cells - 0.5f) - circle / 2f
-        layout(width, totalH) {
-            surface.placeRelative(0, barY)
-            group.placeRelative(0, barY)
-            single.placeRelative(0, rowY)
+        val single = m[2].measure(Constraints.fixed(circle, height))
+        val actionSurface = m[3].measure(Constraints.fixed(circle, height))
+        val actionControl = m[4].measure(Constraints.fixed(circle, height))
+        layout(width, height) {
+            surface.placeRelative(0, 0)
+            group.placeRelative(0, 0)
+            single.placeRelative(selectedX, 0)
             if (action != null) {
-                if (detached) {
-                    actionSurface.placeRelative(width - height, barY)
-                    actionControl.placeRelative(width - height, barY)
-                } else {
-                    // Plegada: círculo propio a la derecha; abierta va dentro de la cápsula (invisible aquí).
-                    val x = if (folded) width - circle else actionOpenX.roundToInt()
-                    actionSurface.placeRelative(x, rowY)
-                    actionControl.placeRelative(x, rowY)
-                }
+                actionSurface.placeRelative(actionX, 0)
+                actionControl.placeRelative(actionX, 0)
             }
-            acc?.placeRelative(accX, accY)
         }
     }
 }
@@ -670,3 +602,281 @@ private fun LiquidTabGroup(
 
 private fun Color.compositeOverOrSelf(under: Color): Color =
     if (under.alpha <= 0f) this else this.compositeOver(under)
+
+/**
+ * Barra con mini reproductor (portada de la barra de Convx): abierta, el mini reproductor va encima de la cápsula;
+ * al hacer scroll se pliega en una sola fila — círculo de la pestaña activa, mini reproductor y círculo de la acción.
+ * No hay morfing de la cápsula: fundido entre la barra abierta y la fila (fadeOut 90 ms, fadeIn 220 ms tras 90 ms),
+ * el mini viaja como elemento compartido con un muelle sin rebote (StiffnessMediumLow) y un gooey de 300 ms con
+ * pico a mitad funde y separa las formas. [accessory] recibe la opacidad de su versión plegada y de la abierta.
+ */
+@Composable
+fun LiquidMediaBar(
+    backdrop: GlassBackdrop,
+    items: List<LiquidBarItem>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    foldState: LiquidBarFoldState? = null,
+    action: LiquidBarAction? = null,
+    colors: LiquidBarColors = LiquidBarDefaults.darkColors(),
+    glass: LiquidGlassStyle = LiquidGlassStyle.Dark,
+    rowHeight: Dp = LiquidBarDefaults.RowHeight,
+    labelStyle: TextStyle = LiquidBarDefaults.LabelStyle,
+    /** true: la acción es siempre un círculo propio a la derecha, solo con su icono. */
+    detachAction: Boolean = false,
+    actionSpacing: Dp = 10.dp,
+    /** Pulsación larga sobre una pestaña, con el rectángulo de su celda para anclar un menú. */
+    onItemLongClick: ((Int, Rect) -> Unit)? = null,
+    /**
+     * Mini reproductor: abierta, va encima de la cápsula; al plegar baja a la fila y ocupa el hueco entre
+     * el círculo de la pestaña y el borde derecho (o el círculo de la acción), con el mismo muelle.
+     */
+    accessory: (@Composable (inline: () -> Float, expanded: () -> Float) -> Unit)? = null,
+    accessoryHeight: Dp = 52.dp,
+    /** Alto de la fila plegada: círculo de la pestaña, mini reproductor y círculo de la acción. */
+    foldedHeight: Dp = 48.dp,
+) {
+    val folded = foldState?.folded == true
+    val presence by animateFloatAsState(
+        if (accessory != null) 1f else 0f,
+        spring(dampingRatio = 0.8f, stiffness = 380f),
+        label = "liquidAccessory",
+    )
+    val lastAccessory = remember { mutableStateOf(accessory) }
+    if (accessory != null) lastAccessory.value = accessory
+    // Igual que la barra de Convx: no hay morfing de la cápsula, sino un fundido entre la barra abierta y
+    // la fila plegada (AnimatedContent: fadeOut 90 ms, fadeIn 220 ms tras 90 ms), el mini reproductor viaja
+    // como elemento compartido (muelle sin rebote, StiffnessMediumLow) y un gooey de 300 ms con pico a
+    // mitad funde y separa las formas.
+    val fold = remember { Animatable(if (folded) 1f else 0f) }
+    val openAlpha = remember { Animatable(if (folded) 0f else 1f) }
+    val foldAlpha = remember { Animatable(if (folded) 1f else 0f) }
+    val goo = remember { Animatable(0f) }
+    LaunchedEffect(folded) {
+        launch {
+            fold.animateTo(
+                if (folded) 1f else 0f,
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+            )
+        }
+        launch {
+            openAlpha.animateTo(if (folded) 0f else 1f, if (folded) tween(90) else tween(220, delayMillis = 90))
+        }
+        launch {
+            foldAlpha.animateTo(if (folded) 1f else 0f, if (folded) tween(220, delayMillis = 90) else tween(90))
+        }
+        launch {
+            goo.snapTo(0f)
+            goo.animateTo(1f, tween(150, easing = FastOutSlowInEasing))
+            goo.animateTo(0f, tween(150, easing = LinearEasing))
+        }
+    }
+    val scope = rememberCoroutineScope()
+    val selectedGlow = remember(scope) { GlassGlow(scope) }
+    val actionGlow = remember(scope) { GlassGlow(scope) }
+    val surfaceBackdrop = rememberGlassBackdrop()
+    val detached = action != null && detachAction
+    val cells = items.size + if (action != null && !detached) 1 else 0
+    // Opacidad del círculo de la acción: siempre visible si va separada; si no, aparece al plegar.
+    val actionAlpha: () -> Float = { if (detached) 1f else foldAlpha.value }
+    val selected = items.getOrNull(selectedIndex)
+    val noRipple = remember { MutableInteractionSource() }
+
+    val cell: @Composable (
+        icon: ImageVector?,
+        iconContent: (@Composable (Color) -> Unit)?,
+        label: String,
+        tint: Color,
+        bold: Boolean,
+        isSelected: Boolean,
+    ) -> Unit = { icon, iconContent, label, tint, bold, isSelected ->
+        Box(Modifier.size(LiquidBarDefaults.IconSlot), contentAlignment = Alignment.Center) {
+            val glyphModifier = Modifier.size(LiquidBarDefaults.IconSlot * 0.8f).glyphBounce(isSelected, folded)
+            if (iconContent != null) {
+                Box(glyphModifier) { iconContent(tint) }
+            } else if (icon != null) {
+                Icon(icon, null, tint = tint, modifier = glyphModifier)
+            }
+        }
+        Text(
+            label, style = labelStyle.copy(fontWeight = if (bold) FontWeight.Bold else FontWeight.Medium),
+            color = tint, maxLines = 1
+        )
+    }
+
+    Layout(
+        modifier = modifier.fillMaxWidth().gooey {
+            GooeyPeakBlur.toPx() * goo.value
+        },
+        content = {
+            // 0 · el cristal de la cápsula abierta
+            Box(
+                Modifier
+                    .graphicsLayer { alpha = openAlpha.value }
+                    .graphicsLayer(elasticStretch(selectedGlow))
+                    .glassSource(surfaceBackdrop)
+                    .liquidGlass(backdrop, CircleShape, glass)
+                    .then(selectedGlow.drawModifier)
+            )
+            // 1 · todas las pestañas a su anchura de reposo, recortadas por la cápsula que encoge
+            Box(
+                Modifier
+                    .graphicsLayer { alpha = openAlpha.value }
+                    .then(if (folded) Modifier.clearAndSetSemantics {} else Modifier)
+            ) {
+                LiquidTabGroup(
+                    backdrop = backdrop,
+                    surfaceBackdrop = surfaceBackdrop,
+                    tabsCount = items.size,
+                    cellsCount = cells,
+                    selectedIndex = selectedIndex,
+                    onSelect = onSelect,
+                    colors = colors,
+                    height = rowHeight,
+                ) {
+                    items.forEachIndexed { i, item ->
+                        val sel = i == selectedIndex
+                        val bounds = remember(i) { mutableStateOf(Rect.Zero) }
+                        val longPressModifier = if (onItemLongClick != null) {
+                            Modifier
+                                .onGloballyPositioned { bounds.value = it.boundsInWindow() }
+                                .pointerInput(i) {
+                                    detectTapGestures(
+                                        onTap = { onSelect(i) },
+                                        onLongPress = { onItemLongClick.invoke(i, bounds.value) },
+                                    )
+                                }
+                        } else null
+                        LiquidCell(
+                            onClick = { onSelect(i) },
+                            label = item.label,
+                            gestures = longPressModifier,
+                        ) {
+                            cell(item.icon, item.iconContent, item.label, if (sel) colors.accent else colors.content, sel, sel)
+                        }
+                    }
+                    if (action != null && !detached) {
+                        LiquidCell(onClick = action.onClick, label = action.label, gestures = action.gestures) {
+                            cell(action.icon, action.iconContent, action.label, if (action.iconTint != Color.Unspecified) action.iconTint else colors.content, false, false)
+                        }
+                    }
+                }
+            }
+            // 2 · la pestaña activa sola, mientras está plegada
+            Box(
+                Modifier
+                    .graphicsLayer(elasticStretch(selectedGlow))
+                    .graphicsLayer { alpha = foldAlpha.value }
+                    .liquidGlass(backdrop, CircleShape, glass)
+                    .then(
+                        if (folded) Modifier.then(selectedGlow.gestureModifier)
+                            .clickable(noRipple, null, onClickLabel = "Mostrar pestañas") { foldState?.unfold() }
+                        else Modifier.clearAndSetSemantics {}
+                    )
+            ) {
+                if (selected != null) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    val glyph = Modifier.size(LiquidBarDefaults.IconSlot * 0.8f).glyphBounce(true, folded)
+                    if (selected.iconContent != null) Box(glyph) { selected.iconContent(colors.accent) }
+                    else if (selected.icon != null) Icon(selected.icon, selected.label, tint = colors.accent, modifier = glyph)
+                }
+            }
+            // 3 · cristal propio de la acción, solo separada
+            Box(
+                Modifier
+                    .graphicsLayer(elasticStretch(actionGlow))
+                    .graphicsLayer { alpha = actionAlpha() }
+                    .then(if (action != null) Modifier.liquidGlass(backdrop, CircleShape, glass) else Modifier)
+                    .then(actionGlow.drawModifier)
+            )
+            // 4 · el control de la acción separada
+            Box(
+                Modifier
+                    .graphicsLayer(elasticStretch(actionGlow))
+                    .graphicsLayer { alpha = actionAlpha() }
+                    .then(
+                        if ((folded || detached) && action != null) Modifier.then(actionGlow.gestureModifier)
+                            .then(action.gestures ?: Modifier.clickable(noRipple, null, onClickLabel = action.label, role = Role.Button, onClick = action.onClick))
+                        else Modifier.clearAndSetSemantics {}
+                    )
+            ) {
+                if (action != null) {
+                    val tint = if (action.iconTint != Color.Unspecified) action.iconTint else colors.content
+                    if (detached) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        val glyph = Modifier.size(LiquidBarDefaults.IconSlot * 0.9f).glyphBounce(false, folded)
+                        if (action.iconContent != null) Box(glyph) { action.iconContent(tint) }
+                        else if (action.icon != null) Icon(action.icon, action.label, tint = tint, modifier = glyph)
+                    } else Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        val glyph = Modifier.size(LiquidBarDefaults.IconSlot * 0.8f).glyphBounce(false, folded)
+                        if (action.iconContent != null) Box(glyph) { action.iconContent(tint) }
+                        else if (action.icon != null) Icon(action.icon, action.label, tint = tint, modifier = glyph)
+                    }
+                }
+            }
+            // 5 · el mini reproductor: encima al abrir, en la fila al plegar
+            val shown = lastAccessory.value
+            if (shown != null && presence > 0.001f) {
+                Box(
+                    Modifier
+                        .graphicsLayer { alpha = presence }
+                        .then(if (accessory == null) Modifier.clearAndSetSemantics {} else Modifier)
+                ) { shown({ foldAlpha.value }, { openAlpha.value }) }
+            }
+        }
+    ) { m, constraints ->
+        val width = constraints.maxWidth
+        val height = rowHeight.roundToPx()
+        val foldedH = foldedHeight.roundToPx().coerceAtMost(height)
+        val p = fold.value
+        val circle = foldedH
+        val inset = 4.dp.toPx()
+        val gap = actionSpacing.roundToPx()
+        // Con la acción separada, la cápsula abierta deja sitio al círculo de la derecha.
+        val openWidth = if (detached) (width - height - gap).coerceAtLeast(height) else width
+        val tabWidth = (openWidth - 2 * inset) / cells.coerceAtLeast(1)
+
+        val surface = m[0].measure(Constraints.fixed(openWidth, height))
+        val group = m[1].measure(Constraints.fixed(openWidth, height))
+        val single = m[2].measure(Constraints.fixed(circle, circle))
+        // Separate action: a full-height circle beside the open bar that shrinks with the row when folding.
+        val actionSize = if (detached) lerp(height.toFloat(), circle.toFloat(), p).roundToInt().coerceAtLeast(1) else circle
+        val actionSurface = m[3].measure(Constraints.fixed(actionSize, actionSize))
+        val actionControl = m[4].measure(Constraints.fixed(actionSize, actionSize))
+
+        val hasAcc = m.size > 5
+        val accFull = accessoryHeight.roundToPx()
+        val accOpenH = if (hasAcc) (accFull * presence).roundToInt() else 0
+        val gapOpen = if (hasAcc) (gap * presence).roundToInt() else 0
+        val openH = accOpenH + gapOpen + height
+        // El contenedor cambia de alto con el mismo muelle (el sizeTransform de AnimatedContent).
+        val totalH = lerp(openH.toFloat(), foldedH.toFloat(), p).roundToInt().coerceAtLeast(foldedH)
+        // Todo va alineado abajo, como el AnimatedContent de Convx (BottomCenter).
+        val openTop = totalH - openH
+        val barY = totalH - height
+        val rowY = totalH - foldedH
+        val rightReserved = if (action != null) circle + gap else 0
+        val accW = lerp(width.toFloat(), (width - circle - gap - rightReserved).toFloat(), p).roundToInt().coerceAtLeast(1)
+        val accX = lerp(0f, (circle + gap).toFloat(), p).roundToInt()
+        val accH = lerp(accFull.toFloat(), foldedH.toFloat(), p).roundToInt().coerceAtLeast(1)
+        val accY = lerp(openTop.toFloat(), rowY.toFloat(), p).roundToInt()
+        val acc = if (hasAcc) m[5].measure(Constraints.fixed(accW, accH)) else null
+        val actionOpenX = inset + tabWidth * (cells - 0.5f) - circle / 2f
+        layout(width, totalH) {
+            surface.placeRelative(0, barY)
+            group.placeRelative(0, barY)
+            single.placeRelative(0, rowY)
+            if (action != null) {
+                if (detached) {
+                    actionSurface.placeRelative(width - actionSize, totalH - actionSize)
+                    actionControl.placeRelative(width - actionSize, totalH - actionSize)
+                } else {
+                    // Plegada: círculo propio a la derecha; abierta va dentro de la cápsula (invisible aquí).
+                    val x = if (folded) width - circle else actionOpenX.roundToInt()
+                    actionSurface.placeRelative(x, rowY)
+                    actionControl.placeRelative(x, rowY)
+                }
+            }
+            acc?.placeRelative(accX, accY)
+        }
+    }
+}

@@ -398,6 +398,8 @@ constructor(
                         when (download.state) {
                             Download.STATE_COMPLETED -> scope.launch {
                                 database.updateDownloadedInfo(download.request.id, true, LocalDateTime.now())
+                                // A downloaded song also joins the Songs list (newest first).
+                                database.addToLibraryIfMissing(download.request.id, System.currentTimeMillis())
                                 if (shared) {
                                     shareFormat(download.request.id, download.request.storageKey())
                                     return@launch

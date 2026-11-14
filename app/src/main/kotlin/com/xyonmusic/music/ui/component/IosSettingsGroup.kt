@@ -5,6 +5,7 @@
 
 package com.xyonmusic.music.ui.component
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -62,18 +63,29 @@ fun IosSettingsGroup(
     ) {
         title?.let {
             IosText(
-                text = it,
-                style = IosTheme.typography.subheadline,
+                text = it.uppercase(),
+                style = IosTheme.typography.caption.copy(letterSpacing = androidx.compose.ui.unit.TextUnit(1.2f, androidx.compose.ui.unit.TextUnitType.Sp), fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold),
                 color = colors.secondaryLabel,
-                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 12.dp, bottom = 8.dp),
+                modifier = Modifier.padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 10.dp),
             )
         }
 
+        // Same modern frosted card as the Settings root: larger radius, soft gradient and a light rim.
+        val cardShape = ContinuousRoundedRectangle(26.dp)
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(ContinuousRoundedRectangle(IosMetrics.GroupedCornerRadius))
-                .background(colors.secondarySystemGroupedBackground)
+                .clip(cardShape)
+                .background(
+                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                        listOf(colors.secondarySystemGroupedBackground, colors.secondarySystemGroupedBackground.copy(alpha = 0.92f))
+                    )
+                )
+                .border(
+                    1.dp,
+                    androidx.compose.ui.graphics.Brush.verticalGradient(listOf(colors.label.copy(alpha = 0.10f), colors.label.copy(alpha = 0.03f))),
+                    cardShape,
+                )
         ) {
             items.forEachIndexed { index, item ->
                 if (index > 0) {

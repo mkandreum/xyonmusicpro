@@ -1333,6 +1333,18 @@ interface DatabaseDao {
     )
     fun migratePlaylistToLibrary(playlistId: String, base: Long)
 
+    /** Songs downloaded before downloads joined the library: put them in the Songs list, by download date. */
+    @Query("UPDATE song SET inLibrary = COALESCE(dateDownload, :now) WHERE isDownloaded = 1 AND inLibrary IS NULL")
+    fun addDownloadedToLibrary(now: Long)
+
+    /** Takes a song out of the library (Songs list). */
+    @Query("UPDATE song SET inLibrary = NULL WHERE id = :id")
+    fun removeFromLibrary(id: String)
+
+    /** Puts a song in the library (Songs list) unless it is already there. */
+    @Query("UPDATE song SET inLibrary = :now WHERE id = :id AND inLibrary IS NULL")
+    fun addToLibraryIfMissing(id: String, now: Long)
+
     @Query("UPDATE song SET isDownloaded = :downloaded, dateDownload = :date WHERE id = :songId")
     fun updateDownloadedInfo(songId: String, downloaded: Boolean, date: LocalDateTime?)
 

@@ -11,6 +11,9 @@ internal object AppRoutePolicy {
         Screens.Explore.route,
         Screens.Settings.route,
         Screens.Songs.route,
+        Screens.LibSongs.route,
+        Screens.LibPlaylists.route,
+        Screens.Downloads.route,
     )
 
     private val webViewRoutes = setOf(

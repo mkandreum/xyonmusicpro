@@ -74,7 +74,8 @@ fun NewActionGrid(
     val gap = if (inPanel) 12.dp else 0.dp
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val columnCount = menuActionColumnCount(maxWidth, MenuActionMinCellWidth, gap, columns)
+        // In the floating panel the icons sit bare, so three fit in a row.
+        val columnCount = menuActionColumnCount(maxWidth, if (inPanel) 68.dp else MenuActionMinCellWidth, gap, columns)
         Column(verticalArrangement = Arrangement.spacedBy(if (inPanel) 12.dp else 8.dp)) {
             actions.chunked(columnCount).forEach { row ->
                 Row(

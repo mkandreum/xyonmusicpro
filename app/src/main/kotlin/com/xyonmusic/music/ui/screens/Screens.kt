@@ -69,6 +69,34 @@ sealed class Screens(
         icon = R.drawable.music_note,
     )
 
+    /** Library songs as a tab (the list with play and shuffle). */
+    object LibSongs : Screens(
+        titleId = R.string.tab_songs,
+        route = "lib_songs",
+        icon = R.drawable.music_note,
+    )
+
+    /** Library playlists as a tab. */
+    object LibPlaylists : Screens(
+        titleId = R.string.tab_playlists,
+        route = "lib_playlists",
+        icon = R.drawable.queue_music,
+    )
+
+    /** Downloaded songs as a tab. */
+    object Downloads : Screens(
+        titleId = R.string.tab_downloads,
+        route = "downloads",
+        icon = R.drawable.download,
+    )
+
+    /** The search landing (genres and moods) as a tab: "Descubrir". Same route as search. */
+    object Discover : Screens(
+        titleId = R.string.tab_discover,
+        route = "search_input",
+        icon = R.drawable.search,
+    )
+
     object Library : Screens(
         titleId = R.string.filter_library,
         route = "library",
@@ -94,15 +122,15 @@ sealed class Screens(
     companion object {
         // Keep Listen Together out of the tab pager to avoid showing it during tab switches.
         // Lazy initialization avoids reading singleton routes before their objects initialize.
-        val MainScreens: List<Screens> by lazy { listOf(Home, Search, Library) }
+        val MainScreens: List<Screens> by lazy { listOf(Home, LibSongs, LibPlaylists, Discover, Search) }
 
         /**
          * Local-only mode promotes [Songs] and omits online destinations.
          */
         fun mainScreens(localOnly: Boolean): List<Screens> =
-            if (localOnly) listOf(Home, Songs, Search, Library) else MainScreens
+            if (localOnly) listOf(Home, Songs, LibPlaylists, Discover, Search) else MainScreens
 
         /** Every route that counts as a tab root, in either mode. */
-        val MainRoutes: Set<String> by lazy { (MainScreens + Songs).map { it.route }.toSet() }
+        val MainRoutes: Set<String> by lazy { (MainScreens + Songs + Library).map { it.route }.toSet() }
     }
 }

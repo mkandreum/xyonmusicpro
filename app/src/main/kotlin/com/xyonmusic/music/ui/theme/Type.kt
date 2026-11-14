@@ -15,12 +15,27 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import com.xyonmusic.music.R
 
-/** SF Pro Text font files used for the app's Latin typography. */
+/**
+ * The app's text face. Still named SfProFontFamily because every screen refers to it, but it is now
+ * Plus Jakarta Sans (variable): rounder and more modern. Titles use [DisplayFontFamily].
+ */
+@OptIn(ExperimentalTextApi::class)
 val SfProFontFamily = FontFamily(
-    Font(R.font.sf_pro_text_regular, FontWeight.Normal),
-    Font(R.font.sf_pro_text_medium, FontWeight.Medium),
-    Font(R.font.sf_pro_text_semibold, FontWeight.SemiBold),
-    Font(R.font.sf_pro_text_bold, FontWeight.Bold),
+    Font(R.font.plus_jakarta_sans, FontWeight.Normal, variationSettings = FontVariation.Settings(FontVariation.weight(400))),
+    Font(R.font.plus_jakarta_sans, FontWeight.Medium, variationSettings = FontVariation.Settings(FontVariation.weight(500))),
+    Font(R.font.plus_jakarta_sans, FontWeight.SemiBold, variationSettings = FontVariation.Settings(FontVariation.weight(600))),
+    Font(R.font.plus_jakarta_sans, FontWeight.Bold, variationSettings = FontVariation.Settings(FontVariation.weight(700))),
+    Font(R.font.plus_jakarta_sans, FontWeight.ExtraBold, variationSettings = FontVariation.Settings(FontVariation.weight(800))),
+)
+
+/** Titles: Chillax, a modern display face. */
+val DisplayFontFamily = FontFamily(
+    Font(R.font.chillax_regular, FontWeight.Normal),
+    Font(R.font.chillax_medium, FontWeight.Medium),
+    Font(R.font.chillax_semibold, FontWeight.SemiBold),
+    Font(R.font.chillax_bold, FontWeight.Bold),
+    Font(R.font.chillax_bold, FontWeight.ExtraBold),
+    Font(R.font.chillax_bold, FontWeight.Black),
 )
 
 @OptIn(ExperimentalTextApi::class)

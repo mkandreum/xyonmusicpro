@@ -46,30 +46,14 @@ internal fun buildHomeSections(
         .toSet()
     val list = mutableListOf<HomeSection>()
 
+    // Inicio, simplified: "Para ti" on top and at most four rows under it. Community, daily discover,
+    // forgotten favourites, the "similar to" rows and moods are gone (moods live in Search).
     if (heroCardEnabled && quickPicks?.isNotEmpty() == true) list.add(HomeSection.Hero)
-    // Speed Dial: pinned items (long-press menu > Pin), same compact shelf as Top Songs.
-    if (homeState.speedDialItems.isNotEmpty()) list.add(HomeSection.SpeedDial)
-    if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
-    if (communityPlaylists?.isNotEmpty() == true) list.add(HomeSection.FromTheCommunity)
-    if (dailyDiscover?.isNotEmpty() == true) list.add(HomeSection.DailyDiscover)
     if (listenAgain?.items?.isNotEmpty() == true) list.add(HomeSection.ListenAgain)
-    if (topSongs?.isNotEmpty() == true) list.add(HomeSection.TopSongs)
+    if (quickPicks?.isNotEmpty() == true) list.add(HomeSection.QuickPicks)
     if (accountPlaylists?.isNotEmpty() == true) list.add(HomeSection.AccountPlaylists)
-    if (forgottenFavorites?.isNotEmpty() == true) list.add(HomeSection.ForgottenFavorites)
-
-    // Capped. The survey's most concrete complaint was "I have to see 4 to 6
-    // similar-to sections that I don't want", and each extra section is ~12 more
-    // simultaneously composed rows — the single largest driver of Home's frame cost
-    // (content alone measured 14ms/frame against an 8.33ms budget).
-    similarRecommendations?.indices?.take(MaxSimilarSections)?.forEach { i ->
-        list.add(HomeSection.SimilarRecommendation(i))
-    }
-
-    homePage?.sections?.indices?.take(MaxHomePageSections)?.forEach { i ->
-        list.add(HomeSection.HomePageSection(i))
-    }
-
-    if (explorePage?.moodAndGenres != null) list.add(HomeSection.MoodAndGenres)
+    // "New from your artists": the first section of YouTube Music's own home feed.
+    homePage?.sections?.indices?.take(1)?.forEach { i -> list.add(HomeSection.HomePageSection(i)) }
 
     // Apply hidden-section filtering once after building the available sections.
     list.retainAll { it.id !in hidden }

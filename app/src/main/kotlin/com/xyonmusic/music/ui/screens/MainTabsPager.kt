@@ -71,8 +71,6 @@ fun MainTabsPager(
 
             Screens.Library -> LibraryScreen(navController)
 
-            Screens.ListenTogether -> JamScreen(navController, asTab = true)
-
             Screens.Settings -> SettingsScreen(navController, scrollBehavior)
 
             else -> Unit

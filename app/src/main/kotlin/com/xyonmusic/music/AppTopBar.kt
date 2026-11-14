@@ -134,7 +134,7 @@ fun AppTopBar(
                         Text(
                             text = titleRes?.let { stringResource(it) } ?: "",
                             style = AppTheme.typography.titleLarge.copy(
-                                fontFamily = SfProFontFamily,
+                                fontFamily = com.xyonmusic.music.ui.theme.DisplayFontFamily,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 34.sp,
                                 lineHeight = 41.sp,

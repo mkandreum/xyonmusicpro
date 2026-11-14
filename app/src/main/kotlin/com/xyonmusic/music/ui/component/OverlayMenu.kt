@@ -54,6 +54,7 @@ import com.xyonmusic.music.ui.ios.foundation.IosTheme
 import com.xyonmusic.music.ui.ios.foundation.menuVibrancy
 import com.xyonmusic.music.ui.ios.compat.AppTheme
 import com.xyonmusic.music.ui.component.liquidGlass
+import io.github.mkandreum.liquidbar.liquidGlass as liquidUiGlass
 import com.xyonmusic.music.ui.component.isGlassAllowed
 import kotlin.math.roundToInt
 
@@ -89,6 +90,8 @@ fun OverlayMenu(
     /** What the glass samples: everything the panel can sit over, chrome included. */
     backdrop: com.xyonmusic.music.ui.component.backdrop.Backdrop? = null,
     liquid: Boolean = true,
+    /** LiquidUI glass source of everything under the menu; when set the panel is LiquidUI glass that refracts it. */
+    nativeBackdrop: io.github.mkandreum.liquidbar.glass.GlassBackdrop? = null,
 ) {
     val focusManager = LocalFocusManager.current
     val density = LocalDensity.current
@@ -201,8 +204,19 @@ fun OverlayMenu(
                     // over the expanded player the fill is laid flat (its backdrop is the page
                     // under the player, not what is on screen).
                     .then(
-                        if (useGlass) Modifier.liquidGlass(config = menuGlassConfig, shape = shape, highlightAlpha = 0.20f)
-                        else Modifier.background(menuFallbackColor.copy(alpha = 0.94f), shape),
+                        when {
+                            // LiquidUI glass: blurred, saturated and refracted at the edge, like the bar.
+                            nativeBackdrop != null && glass -> {
+                                val base = if (darkAppearance) io.github.mkandreum.liquidbar.LiquidGlassStyle.Dark else io.github.mkandreum.liquidbar.LiquidGlassStyle.Light
+                                val style = base.copy(
+                                    blur = 10.dp, refractionHeight = 28.dp, refractionAmount = 28.dp,
+                                    surface = if (darkAppearance) IosMenuMaterial.DarkPanelFill.copy(alpha = 0.55f) else base.surface,
+                                )
+                                Modifier.liquidUiGlass(nativeBackdrop, shape, style)
+                            }
+                            useGlass -> Modifier.liquidGlass(config = menuGlassConfig, shape = shape, highlightAlpha = 0.20f)
+                            else -> Modifier.background(menuFallbackColor.copy(alpha = 0.94f), shape)
+                        },
                     )
                     .then(highlight.modifier)
                     .then(highlight.gestureModifier)

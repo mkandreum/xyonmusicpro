@@ -141,10 +141,26 @@ class MainActivity : ComponentActivity() {
 
     @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
     @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+    private var tapDownX = 0f
+    private var tapDownY = 0f
+    private var tapDownAt = 0L
+
     override fun dispatchTouchEvent(ev: android.view.MotionEvent): Boolean {
-        if (ev.actionMasked == android.view.MotionEvent.ACTION_DOWN) {
-            com.xyonmusic.music.ui.component.MenuAnchor.lastDown =
-                androidx.compose.ui.geometry.Offset(ev.x, ev.y)
+        when (ev.actionMasked) {
+            android.view.MotionEvent.ACTION_DOWN -> {
+                com.xyonmusic.music.ui.component.MenuAnchor.lastDown =
+                    androidx.compose.ui.geometry.Offset(ev.x, ev.y)
+                tapDownX = ev.x; tapDownY = ev.y; tapDownAt = ev.eventTime
+            }
+            // A light tick on every tap, anywhere in the app: buttons, rows, tabs, menus. Scrolls and drags
+            // (finger moved) and long presses don't tick here; they have their own haptics.
+            android.view.MotionEvent.ACTION_UP -> {
+                val slop = android.view.ViewConfiguration.get(this).scaledTouchSlop
+                val moved = kotlin.math.hypot(ev.x - tapDownX, ev.y - tapDownY) > slop
+                if (!moved && ev.eventTime - tapDownAt < 350) {
+                    window.decorView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                }
+            }
         }
         return super.dispatchTouchEvent(ev)
     }

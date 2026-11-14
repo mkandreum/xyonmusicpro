@@ -502,19 +502,22 @@ class HomeViewModel @Inject constructor(
                     .take(20)
                 publishAllLocalItems()
 
-                val recentSong = database.latestEvent().first()?.song
+                // Learns from your taste: the last song plus your three most played songs of the last
+                // 30 days seed YouTube's "related" lists, so the picks follow what you actually listen to.
+                val monthAgo = System.currentTimeMillis() - 30L * 86_400_000L
+                val seeds = (listOfNotNull(database.latestEvent().first()?.song) +
+                    database.mostPlayedSongs(monthAgo, limit = 3).first())
+                    .filterNot { it.song.isLocal }
+                    .distinctBy { it.id }
                 val ytSimilarSongs = mutableListOf<Song>()
-
-                if (recentSong != null) {
-                    val endpoint = recommendationRequest { YouTube.next(WatchEndpoint(videoId = recentSong.id)) }
-                        .getOrNull()?.relatedEndpoint
-                    if (endpoint != null) {
-                        recommendationRequest { YouTube.related(endpoint) }.onSuccess { page ->
-                            page.songs.take(10).forEach { ytSong ->
-                                database.song(ytSong.id).first()?.let { localSong ->
-                                    if (!localSong.song.isLocal && (!hideVideoSongs || !localSong.song.isVideo)) {
-                                        ytSimilarSongs.add(localSong)
-                                    }
+                for (seed in seeds) {
+                    val endpoint = recommendationRequest { YouTube.next(WatchEndpoint(videoId = seed.id)) }
+                        .getOrNull()?.relatedEndpoint ?: continue
+                    recommendationRequest { YouTube.related(endpoint) }.onSuccess { page ->
+                        page.songs.take(10).forEach { ytSong ->
+                            database.song(ytSong.id).first()?.let { localSong ->
+                                if (!localSong.song.isLocal && (!hideVideoSongs || !localSong.song.isVideo)) {
+                                    ytSimilarSongs.add(localSong)
                                 }
                             }
                         }

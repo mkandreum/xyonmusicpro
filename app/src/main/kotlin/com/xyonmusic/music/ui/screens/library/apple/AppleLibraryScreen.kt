@@ -289,18 +289,13 @@ private val DeviceLibraryDestinations = setOf(
     AppleLibraryDestination.Albums, AppleLibraryDestination.Songs, AppleLibraryDestination.Local,
 )
 
+// Songs and Playlists are bar tabs now, and downloaded songs carry a mark in Songs, so the Library keeps
+// only what has no other home.
 private val Rows = listOf(
-    CategoryRowSpec(AppleLibraryDestination.Playlists, R.string.filter_playlists, sf("SFMusicNoteList")),
     CategoryRowSpec(AppleLibraryDestination.Artists, R.string.filter_artists, sf("microphone.dynamic.on.stand")),
     CategoryRowSpec(AppleLibraryDestination.Albums, R.string.filter_albums, sf("SFSquareStack")),
-    CategoryRowSpec(AppleLibraryDestination.Songs, R.string.filter_songs, sf("SFMusicNote")),
-    CategoryRowSpec(AppleLibraryDestination.Local, R.string.filter_local, sf("SFIphone")),
-    CategoryRowSpec(AppleLibraryDestination.Downloaded, R.string.filter_downloaded, sf("SFArrowDownCircle")),
     CategoryRowSpec(AppleLibraryDestination.Liked, R.string.filter_liked, sf("SFHeart")),
-    CategoryRowSpec(AppleLibraryDestination.Podcasts, R.string.filter_podcasts, sf("microphone")),
-    CategoryRowSpec(AppleLibraryDestination.Cached, R.string.cached_playlist, sf("SFArrowDownCircleDotted")),
-    CategoryRowSpec(AppleLibraryDestination.Top, R.string.my_top, sf("SFChartBar")),
-    CategoryRowSpec(AppleLibraryDestination.Uploaded, R.string.uploaded_playlist, sf("SFIcloudAndArrowUp")),
+    CategoryRowSpec(AppleLibraryDestination.Local, R.string.filter_local, sf("SFIphone")),
     CategoryRowSpec(AppleLibraryDestination.History, R.string.history, sf("SFClock")),
 )
 

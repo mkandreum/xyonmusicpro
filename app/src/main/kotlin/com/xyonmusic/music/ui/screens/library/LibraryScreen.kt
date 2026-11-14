@@ -30,7 +30,10 @@ fun LibraryScreen(navController: NavController) {
     val back = { filterType = LibraryFilter.LIBRARY }
     Box(modifier = Modifier.fillMaxSize()) {
         // Apple Music's Library and its lists: new screens on the plain system background.
-        when (filterType) {
+        // Landscape always shows the CoverFlow (AppleLibraryScreen draws it), whatever view was open.
+        val landscape = androidx.compose.ui.platform.LocalConfiguration.current.orientation ==
+            android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        when (if (landscape) LibraryFilter.LIBRARY else filterType) {
             LibraryFilter.LIBRARY -> AppleLibraryScreen(
                 navController = navController,
                 onOpen = { destination ->

@@ -125,6 +125,13 @@ fun NavGraphBuilder.navigationBuilder(
         HomeRoute(navController = navController, snackbarHostState = snackbarHostState)
     }
 
+    // Only ever reachable as a tab while local-only mode is on (see Screens.mainScreens),
+    // but the route is always registered: a saved back stack entry from a session that
+    // had the mode on must still resolve after it is turned off.
+    sharedComposable(Screens.Songs.route) {
+        LocalSongsScreen(navController)
+    }
+
     composable(Screens.Search.route) {
         val pureBlackEnabled by rememberPreference(PureBlackKey, defaultValue = false)
         val darkTheme by rememberEnumPreference(DarkModeKey, defaultValue = DarkMode.AUTO)
@@ -144,55 +151,24 @@ fun NavGraphBuilder.navigationBuilder(
         )
     }
 
-    // Only ever reachable as a tab while local-only mode is on (see Screens.mainScreens),
-    // but the route is always registered: a saved back stack entry from a session that
-    // had the mode on must still resolve after it is turned off.
-    sharedComposable(Screens.Songs.route) {
-        LocalSongsScreen(navController)
+    sharedComposable(Screens.LibSongs.route) {
+        androidx.compose.runtime.CompositionLocalProvider(com.xyonmusic.music.ui.screens.library.apple.LocalSubpageIsTab provides true) {
+            com.xyonmusic.music.ui.screens.library.apple.AppleSongsPage(navController, onBack = {})
+        }
+    }
+
+    sharedComposable(Screens.LibPlaylists.route) {
+        androidx.compose.runtime.CompositionLocalProvider(com.xyonmusic.music.ui.screens.library.apple.LocalSubpageIsTab provides true) {
+            com.xyonmusic.music.ui.screens.library.apple.ApplePlaylistsPage(navController, onBack = {})
+        }
     }
 
     sharedComposable(Screens.Library.route) {
         LibraryScreen(navController)
     }
 
-    sharedComposable(Screens.Explore.route) {
-        ExploreScreen(navController = navController)
-    }
-
-    sharedComposable(Screens.Radio.route) {
-        RadioScreen(navController = navController)
-    }
-
-    composable(
-        route = "radio_station/{seedId}?title={title}&artist={artist}&thumbnail={thumbnail}",
-        arguments = listOf(
-            navArgument("seedId") { type = NavType.StringType },
-            navArgument("title") { type = NavType.StringType; nullable = true; defaultValue = null },
-            navArgument("artist") { type = NavType.StringType; nullable = true; defaultValue = null },
-            navArgument("thumbnail") { type = NavType.StringType; nullable = true; defaultValue = null },
-        ),
-    ) { entry ->
-        RadioStationScreen(
-            navController = navController,
-            seedId = entry.arguments?.getString("seedId").orEmpty(),
-            seedTitle = entry.arguments?.getString("title").orEmpty(),
-            seedArtist = entry.arguments?.getString("artist").orEmpty(),
-            seedThumbnail = entry.arguments?.getString("thumbnail").orEmpty(),
-        )
-    }
-
     sharedComposable(Screens.Settings.route) {
         SettingsScreen(navController, scrollBehavior)
-    }
-
-    sharedComposable(
-        route = "listen_together_from_topbar",
-    ) {
-        com.xyonmusic.music.ui.screens.JamScreen(navController)
-    }
-
-    sharedComposable("listen_together/chat") {
-        CommentTogetherScreen(navController)
     }
 
     sharedComposable("history") {
@@ -574,10 +550,6 @@ fun NavGraphBuilder.navigationBuilder(
         LocalFoldersSettingsScreen(navController, scrollBehavior)
     }
 
-    sharedComposable("listen_together/party") {
-        com.xyonmusic.music.ui.screens.JamScreen(navController)
-    }
-
     sharedComposable(
         route = "network_browse/{serverId}",
         arguments = listOf(navArgument("serverId") { type = NavType.StringType }),
@@ -670,10 +642,6 @@ fun NavGraphBuilder.navigationBuilder(
         LastFMSettings(navController, scrollBehavior)
     }
 
-    sharedComposable(route = "settings/integrations/listen_together") {
-        ListenTogetherSettings(navController, scrollBehavior)
-    }
-
     sharedComposable("settings/discord/login") {
         DiscordLoginScreen(navController)
     }
@@ -696,10 +664,6 @@ fun NavGraphBuilder.navigationBuilder(
 
     sharedComposable("switch_channel") {
         SwitchChannelScreen(navController)
-    }
-
-    sharedComposable("wrapped") {
-        WrappedScreen(navController)
     }
 
     sharedComposable("ambient_mode") {
@@ -758,7 +722,9 @@ private fun NavGraphBuilder.sharedComposable(
                 slideInHorizontally(tween(PageEnterMillis, easing = FastOutSlowInEasing)) { it } +
                     fadeIn(tween(PageEnterMillis, easing = FastOutSlowInEasing))
             } else {
-                fadeIn(tween(Motion.PushMillis))
+                // Top-level screens settle in with a small spring scale instead of a flat fade.
+                fadeIn(tween(Motion.PushMillis)) +
+                    androidx.compose.animation.scaleIn(androidx.compose.animation.core.spring(dampingRatio = 0.86f, stiffness = 420f), initialScale = 0.965f)
             }
         },
         exitTransition = {

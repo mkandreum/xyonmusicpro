@@ -13,7 +13,7 @@ body:
     attributes:
       label: Before you submit
       options:
-        - label: I'm using the [latest nightly build](https://github.com/mkandreum/xyonmusicpro/releases/tag/2.0.0-nightly) (or the problem also happens on stable).
+        - label: I'm using the [latest release](https://github.com/mkandreum/xyonmusicpro/releases/latest).
           required: true
         - label: I searched the existing issues and this isn't a duplicate.
           required: true
@@ -76,7 +76,7 @@ body:
     attributes:
       label: XyonMusic version
       description: Settings → Help & About → About. For a nightly, give the date you installed it.
-      placeholder: "2.0.0 nightly"
+      placeholder: "1.1.0"
     validations:
       required: true
 

@@ -295,30 +295,7 @@ fun PlayerMenu(
         item {
             IosMenuGroup(
                 items = buildList {
-                    // Always visible. Re-triggers the full resolution chain.
-                    add(
-                        IosMenuItemData(
-                            title = { Text(text = stringResource(R.string.retry_stream)) },
-                            description = {
-                                Text(
-                                    text = if (saavnEnabled)
-                                        stringResource(R.string.retry_stream_desc_saavn)
-                                    else
-                                        stringResource(R.string.retry_stream_desc_yt)
-                                )
-                            },
-                            icon = {
-                                SymbolIcon(symbol = sf("arrow.counterclockwise"), contentDescription = null, size = 24.dp)
-                            },
-                            onClick = {
-                                val player = playerConnection.player
-                                player.seekTo(0)
-                                player.prepare()
-                                player.play()
-                                onDismiss()
-                            }
-                        )
-                    )
+
 
                     if (artists.isNotEmpty()) {
                         add(
@@ -492,54 +469,7 @@ fun PlayerMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        item {
-            IosMenuGroup(
-                items = buildList {
-                    add(
-                        IosMenuItemData(
-                            title = { Text(text = stringResource(R.string.listen_together)) },
-                            icon = {
-                                // Show a small badge when there are pending suggestions
-                                Box {
-                                    SymbolIcon(symbol = sf("person.2.fill"), contentDescription = null, size = 24.dp)
-                                    if (pendingSuggestions.isNotEmpty()) {
-                                        Surface(
-                                            shape = ContinuousRoundedRectangle(12.dp),
-                                            color = AppTheme.colorScheme.primary,
-                                            modifier = Modifier
-                                                .offset(x = 8.dp, y = (-6).dp)
-                                                .align(Alignment.TopEnd)
-                                        ) {
-                                            Text(
-                                                text = pendingSuggestions.size.toString(),
-                                                color = AppTheme.colorScheme.onPrimary,
-                                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                                                style = AppTheme.typography.labelSmall
-                                            )
-                                        }
-                                    }
-                                }
-                            },
-                            onClick = { onDismiss(); navController.navigate("listen_together/party") }
-                        )
-                    )
-                    if (isListenTogetherGuest) {
-                        add(
-                            IosMenuItemData(
-                                title = { Text(text = stringResource(R.string.resync)) },
-                                icon = {
-                                    SymbolIcon(symbol = sf("arrow.counterclockwise"), contentDescription = null, size = 24.dp)
-                                },
-                                onClick = {
-                                    listenTogetherManager.requestSync()
-                                    onDismiss()
-                                }
-                            )
-                        )
-                    }
-                }
-            )
-        }
+
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 

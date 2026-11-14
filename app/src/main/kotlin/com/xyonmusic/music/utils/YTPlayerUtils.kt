@@ -992,7 +992,7 @@ object YTPlayerUtils {
                     break@clientLoop
                 }
 
-                if (validateStatus(streamUrl)) {
+                if (validateStatus(streamUrl, format?.contentLength)) {
                     Timber.tag(logTag).d("Stream validated successfully with client: ${currentClient.clientName}")
                     PlaybackLogManager.log(PlaybackLogLevel.INFO, "Stream validated", currentClient.clientName)
                     Timber.tag(TAG).i("Playback: client=${currentClient.clientName}, videoId=$videoId")
@@ -1108,26 +1108,33 @@ object YTPlayerUtils {
             .onFailure { Timber.tag(logTag).e(it, "Failed to fetch metadata") }
     }
 
-    private fun validateStatus(url: String): Boolean {
+    /**
+     * Checks the URL really streams. Byte 0 alone is not enough: clients that need a PO token (IOS, VISIONOS…)
+     * hand out URLs that serve the first bytes and answer 403 further in, so playback stops and downloads fail.
+     * A second one-byte probe near the end of the file catches that and moves on to the next client.
+     */
+    private fun validateStatus(url: String, contentLength: Long? = null): Boolean {
         Timber.tag(logTag).d("Validating stream URL status")
+        // Near the end: tokenless clients serve roughly the first ~450 KB (the first minute) and 403 after that.
+        val deep = contentLength?.takeIf { it > 4L }?.let { it - 2 } ?: 1_048_576L
+        return probeByte(url, 0L) && probeByte(url, deep, allowPastEnd = contentLength == null)
+    }
+
+    private fun probeByte(url: String, offset: Long, allowPastEnd: Boolean = false): Boolean {
         try {
             // Use a one-byte ranged GET: YouTube can accept HEAD for a stream it won't serve.
-            val requestBuilder = okhttp3.Request.Builder()
+            // Do NOT add Cookie header — googlevideo.com CDN rejects account cookies with 403.
+            val request = okhttp3.Request.Builder()
                 .get()
                 .url(url)
-                .header("Range", "bytes=0-0")
+                .header("Range", "bytes=$offset-$offset")
                 .header("User-Agent", YouTubeClient.USER_AGENT_WEB)
-
-            // Do NOT add Cookie header — googlevideo.com CDN rejects account cookies with 403.
-            // Stream URLs are already authenticated via signed URL parameters.
-
-            // use {} rather than leaking the (1-byte) body back into the pool unread.
-            // 206 is the honoured range; a server that ignores Range answers 200. Both
-            // mean bytes are being served, which is the only thing this asks.
-            val (isSuccessful, code) = httpClient.newCall(requestBuilder.build()).execute()
-                .use { it.isSuccessful to it.code }
-            Timber.tag(logTag).d("Stream URL validation result: ${if (isSuccessful) "Success" else "Failed"} ($code)")
-            return isSuccessful
+                .build()
+            val code = httpClient.newCall(request).execute().use { it.code }
+            // 206 honoured range, 200 range ignored; 416 only when the length was a guess past the end.
+            val ok = code in 200..299 || (allowPastEnd && code == 416)
+            Timber.tag(logTag).d("Stream URL probe @$offset: ${if (ok) "Success" else "Failed"} ($code)")
+            return ok
         } catch (e: Exception) {
             Timber.tag(logTag).e(e, "Stream URL validation failed with exception")
             reportException(e)

@@ -220,7 +220,8 @@ fun Switch(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     colors: androidx.compose.material3.SwitchColors? = null,
-) = CupertinoSwitch(
+) = io.github.mkandreum.liquidbar.ui.LiquidToggle(
+    // LiquidUI glass switch: the knob is a lens that magnifies the track while held.
     checked = checked,
     onCheckedChange = { onCheckedChange?.invoke(it) },
     modifier = modifier,
@@ -237,15 +238,14 @@ fun Slider(
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
     onValueChangeFinished: (() -> Unit)? = null,
-) = CupertinoSlider(
+) = io.github.mkandreum.liquidbar.ui.LiquidSlider(
+    // LiquidUI glass slider: the knob becomes a 58x38 lens with a value bubble while dragged.
     value = value,
-    onValueChange = onValueChange,
+    onValueChange = { if (enabled) onValueChange(it) },
     modifier = modifier,
-    enabled = enabled,
     valueRange = valueRange,
-    steps = steps,
-    backdrop = zone.ien.hig.utils.rememberDefaultBackdrop(),
-    onValueChangeFinished = onValueChangeFinished ?: {},
+    step = if (steps > 0) (valueRange.endInclusive - valueRange.start) / (steps + 1) else 0f,
+    onValueChangeFinished = onValueChangeFinished,
 )
 
 /**

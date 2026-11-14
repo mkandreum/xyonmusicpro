@@ -86,6 +86,7 @@ import com.xyonmusic.music.ui.screens.search.DynamicSearchPlaceholder
 import com.xyonmusic.music.ui.utils.bounceClick
 import com.xyonmusic.music.ui.utils.additiveChrome
 import io.github.mkandreum.liquidbar.LiquidBar
+import io.github.mkandreum.liquidbar.LiquidMediaBar
 import io.github.mkandreum.liquidbar.LiquidBarAction
 import io.github.mkandreum.liquidbar.LiquidBarColors
 import io.github.mkandreum.liquidbar.LiquidBarFoldState
@@ -127,12 +128,16 @@ fun AppFloatingNavBar(
             modifier = modifier,
             transitionSpec = {
                 if (targetState) {
-                    (slideInVertically(
-                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
-                    ) { it / 2 } + fadeIn()) togetherWith
-                        (slideOutVertically(
-                            animationSpec = spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMedium)
-                        ) { it } + fadeOut())
+                    // The field grows out of the search circle (bottom-right), like LiquidUI's search morph.
+                    (androidx.compose.animation.scaleIn(
+                        spring(dampingRatio = 0.7f, stiffness = 300f),
+                        initialScale = 0.2f,
+                        transformOrigin = androidx.compose.ui.graphics.TransformOrigin(1f, 0.5f),
+                    ) + fadeIn(androidx.compose.animation.core.tween(160))) togetherWith
+                        (androidx.compose.animation.scaleOut(
+                            spring(dampingRatio = 1f, stiffness = 500f),
+                            targetScale = 0.92f,
+                        ) + fadeOut(androidx.compose.animation.core.tween(120)))
                 } else {
                     (slideInVertically(
                         animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)
@@ -224,7 +229,7 @@ private fun LiquidNavBarChrome(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        LiquidBar(
+        LiquidMediaBar(
             backdrop = backdrop,
             items = barScreens.map { screen ->
                 LiquidBarItem(
@@ -253,7 +258,7 @@ private fun LiquidNavBarChrome(
             },
             selectedIndex = selectedIndex,
             onSelect = { index ->
-                val screen = barScreens.getOrNull(index) ?: return@LiquidBar
+                val screen = barScreens.getOrNull(index) ?: return@LiquidMediaBar
                 when {
                     screen == Screens.Search -> if (searchModeActive) navSearch.onTapBar() else navSearch.onTapSearchIcon()
                     searchModeActive -> navSearch.onExit()
@@ -266,6 +271,8 @@ private fun LiquidNavBarChrome(
             glass = glassStyle,
             rowHeight = NavBarRowHeight,
             labelStyle = TextStyle(fontSize = 10.sp, lineHeight = 12.sp),
+            // Search is always its own circle on the right, apart from the tabs.
+            detachAction = true,
             onItemLongClick = { index, rect ->
                 val screen = barScreens.getOrNull(index)
                 if (screen != null && tabContextMenu != null) heldTab = screen to rect
@@ -319,7 +326,10 @@ internal fun Screens.navSymbol(): String? = when (this) {
     Screens.Library -> "music.note.square.stack.fill"
     Screens.Explore -> "square.grid.2x2.fill"
     Screens.Search -> "magnifyingglass"
-    Screens.Songs -> "music.note"
+    Screens.Songs, Screens.LibSongs -> "music.note"
+    Screens.LibPlaylists -> "music.note.list"
+    Screens.Discover -> "square.grid.2x2.fill"
+    Screens.Downloads -> "arrow.down.circle.fill"
     Screens.Radio -> "dot.radiowaves.left.and.right"
     Screens.ListenTogether -> "person.2.fill"
     else -> null

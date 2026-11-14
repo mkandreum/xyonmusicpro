@@ -210,7 +210,7 @@ import timber.log.Timber
 import java.net.URLDecoder
 
 private const val DIAG_DISABLE_BACKDROP = false
-private const val USE_SHARED_GLASS_POOL = true
+private const val USE_SHARED_GLASS_POOL = false
 
 @SuppressLint("UnusedMaterial3ScaffoldPaddingParameter")
 @OptIn(
@@ -460,7 +460,10 @@ internal fun AppRootContent(
             // A real tablet gets the side bar on its own; the toggle only exists
             // to force it onto a device that wouldn't otherwise qualify.
             val isWideScreen = configuration.containerDpSize.width >= TabletWidthThreshold
-            val showRail = forceTabletLayout || isWideScreen
+            // As in the original XyonMusic: rotate the phone on the Library (any of its views) and the
+            // whole screen becomes the horizontal CoverFlow, with no side bar, top bar or tab bar.
+            val landscapeCoverFlow = isLandscape && currentRoute == Screens.Library.route
+            val showRail = (forceTabletLayout || isWideScreen) && !landscapeCoverFlow
 
             // Only record the screen layer while the native glass bar can actually sample it.
             val nativeGlassActive = glassAllowed && shouldShowNavigationBar && !showRail
@@ -646,10 +649,6 @@ internal fun AppRootContent(
                 com.xyonmusic.music.constants.ChipSortTypeKey,
                 com.xyonmusic.music.constants.LibraryFilter.LIBRARY,
             )
-            // As in the original XyonMusic: rotate the phone on the Library and the whole screen
-            // becomes the horizontal CoverFlow, with no bars over it.
-            val landscapeCoverFlow = isLandscape && effectiveRoute == Screens.Library.route &&
-                libraryFilter == com.xyonmusic.music.constants.LibraryFilter.LIBRARY
             LaunchedEffect(effectiveRoute, listenTogetherInTopBar, showRail, libraryFilter, landscapeCoverFlow) {
                 val isListenTogetherScreen = effectiveRoute == Screens.ListenTogether.route ||
                     currentRoute == "listen_together_from_topbar"
@@ -707,7 +706,7 @@ internal fun AppRootContent(
             val currentTitleRes = remember(effectiveRoute) {
                 when (effectiveRoute) {
                     Screens.Home.route -> com.xyonmusic.music.R.string.home
-                    Screens.Search.route -> com.xyonmusic.music.R.string.search
+                    Screens.Search.route -> com.xyonmusic.music.R.string.tab_discover
                     Screens.Library.route -> com.xyonmusic.music.R.string.filter_library
                     Screens.Radio.route -> com.xyonmusic.music.R.string.radio
                     Screens.Songs.route -> com.xyonmusic.music.R.string.songs
@@ -837,6 +836,8 @@ internal fun AppRootContent(
                 val showFallbackTopHaze = !shouldShowTopBar &&
                     AppRoutePolicy.showsFallbackTopHaze(currentRoute)
                 val menuBackdrop = rememberLayerBackdrop()
+                // LiquidUI source for the menus: the whole screen under them, player included.
+                val menuGlassBackdrop = rememberGlassBackdrop()
                 val playerBackdropHolder = remember { com.xyonmusic.music.ui.player.PlayerBackdropHolder() }
                 val menuSourceBackdrop = (if (playerBottomSheetState.isExpanded) playerBackdropHolder.backdrop else null) ?: menuBackdrop
 
@@ -844,7 +845,7 @@ internal fun AppRootContent(
                 // to avoid a RenderNode cycle.
                 Box(
                     Modifier.fillMaxSize().then(
-                        if (AppRoutePolicy.isWebViewRoute(currentRoute)) Modifier else Modifier.layerBackdrop(menuBackdrop),
+                        if (AppRoutePolicy.isWebViewRoute(currentRoute)) Modifier else Modifier.layerBackdrop(menuBackdrop).glassSource(menuGlassBackdrop),
                     ),
                 ) {
                     Scaffold(
@@ -1282,13 +1283,15 @@ internal fun AppRootContent(
             // Keep the same glass material over the expanded player as over Home.
                 // Menus on album, artist, playlist and player surfaces use the dark palette too.
                 val menuDark = com.xyonmusic.music.ui.theme.isForcedDarkRoute(currentRoute) || currentRoute?.startsWith("search") == true ||
-                    playerBottomSheetState.progress > 0f
+                    // Derived: reading progress here recomposed the whole root every frame of a drag.
+                    playerAboveBars
                 ForcedDarkScope(enabled = menuDark) {
                 OverlayMenu(
                     state = LocalMenuState.current,
                     glass = true,
                     backdrop = menuSourceBackdrop,
                     liquid = true,
+                    nativeBackdrop = menuGlassBackdrop,
                 )
                 }
 

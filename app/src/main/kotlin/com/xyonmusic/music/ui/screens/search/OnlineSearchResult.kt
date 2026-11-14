@@ -5,6 +5,7 @@
 
 package com.xyonmusic.music.ui.screens.search
 
+import androidx.compose.ui.draw.drawWithContent
 import com.xyonmusic.music.ui.component.sf
 import com.xyonmusic.music.ui.component.SymbolIcon
 import androidx.compose.ui.res.painterResource
@@ -358,6 +359,17 @@ fun OnlineSearchResult(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heroPullZoom(heroZoom)
+                            // Results melt away at the edges (top under the filters, bottom under the bar).
+                            .graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen }
+                            .drawWithContent {
+                                drawContent()
+                                drawRect(
+                                    androidx.compose.ui.graphics.Brush.verticalGradient(
+                                        0f to Color.Transparent, 0.035f to Color.Black, 0.86f to Color.Black, 1f to Color.Transparent,
+                                    ),
+                                    blendMode = androidx.compose.ui.graphics.BlendMode.DstIn,
+                                )
+                            }
                     ) {
                         if (searchFilter == null) {
                             searchSummary?.summaries?.forEach { summary ->
