@@ -877,6 +877,12 @@ object YTPlayerUtils {
             else -> -1
         }
 
+        // First stream that starts but fails the end-of-file probe (tokenless clients on a bot-flagged IP):
+        // better than an unvalidated last client, which usually does not play at all.
+        var partialFormat: PlayerResponse.StreamingData.Format? = null
+        var partialUrl: String? = null
+        var partialExpires: Int? = null
+        var partialResponse: PlayerResponse? = null
         clientLoop@ for (clientIndex in (startIndex until STREAM_FALLBACK_CLIENTS.size)) {
             format = null
             streamUrl = null
@@ -947,7 +953,7 @@ object YTPlayerUtils {
                     STREAM_FALLBACK_CLIENTS[clientIndex]
                 }
 
-                val isPrivatelyOwnedTrack = streamPlayerResponse.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
+                val isPrivatelyOwnedTrack = streamPlayerResponse?.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
 
                 // Apply n-transform FIRST for web clients (main branch order - critical!)
                 if (currentClient.useWebPoTokens) {
@@ -971,7 +977,7 @@ object YTPlayerUtils {
                     streamUrl = "${streamUrl}${separator}pot=${poToken.streamingDataPoToken}"
                 }
 
-                streamExpiresInSeconds = streamPlayerResponse.streamingData?.expiresInSeconds
+                streamExpiresInSeconds = streamPlayerResponse?.streamingData?.expiresInSeconds
                 if (streamExpiresInSeconds == null) {
                     // Keep a resolved stream if the response omits its expiry.
                     streamExpiresInSeconds = DEFAULT_STREAM_EXPIRY_SECONDS
@@ -982,6 +988,16 @@ object YTPlayerUtils {
                 val urlHost = try { java.net.URL(streamUrl).host } catch (e: Exception) { "unknown" }
                 Timber.tag(logTag).d("Stream URL host: $urlHost, pot length: ${poToken?.streamingDataPoToken?.length ?: 0}")
 
+                if (clientIndex == STREAM_FALLBACK_CLIENTS.size - 1 && !isPrivatelyOwnedTrack && partialUrl != null &&
+                    !validateStatus(streamUrl, format?.contentLength)
+                ) {
+                    Timber.tag(logTag).d("Last client did not validate; using the stream that at least starts")
+                    format = partialFormat
+                    streamUrl = partialUrl
+                    streamExpiresInSeconds = partialExpires
+                    streamPlayerResponse = partialResponse
+                    break@clientLoop
+                }
                 if (clientIndex == STREAM_FALLBACK_CLIENTS.size - 1 || isPrivatelyOwnedTrack) {
                     if (isPrivatelyOwnedTrack) {
                         Timber.tag(logTag).d("Skipping validation for privately owned track: ${currentClient.clientName}")
@@ -999,6 +1015,12 @@ object YTPlayerUtils {
                     break@clientLoop
                 } else {
                     Timber.tag(logTag).d("Stream validation failed for client: ${currentClient.clientName}")
+                    if (partialUrl == null && probeByte(streamUrl, 0L)) {
+                        partialFormat = format
+                        partialUrl = streamUrl
+                        partialExpires = streamExpiresInSeconds
+                        partialResponse = streamPlayerResponse
+                    }
 
                     // For web clients: try alternate n-transform and re-validate (Zemer approach)
                     if (currentClient.useWebPoTokens) {

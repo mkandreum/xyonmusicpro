@@ -194,6 +194,7 @@ private fun LiquidNavBarChrome(
     modifier: Modifier,
 ) {
     BackHandler(enabled = searchModeActive, onBack = navSearch.onExit)
+    val navContext = androidx.compose.ui.platform.LocalContext.current
 
     val isDark = AppTheme.colorScheme.surface.luminance() <= 0.5f
     val selectedColor = IosTheme.tint
@@ -259,6 +260,8 @@ private fun LiquidNavBarChrome(
             selectedIndex = selectedIndex,
             onSelect = { index ->
                 val screen = barScreens.getOrNull(index) ?: return@LiquidMediaBar
+                // A firmer click when the tab actually changes (the global tap tick covers taps).
+                com.xyonmusic.music.utils.Haptics.click(navContext)
                 when {
                     screen == Screens.Search -> if (searchModeActive) navSearch.onTapBar() else navSearch.onTapSearchIcon()
                     searchModeActive -> navSearch.onExit()

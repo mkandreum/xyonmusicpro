@@ -845,7 +845,10 @@ internal fun AppRootContent(
                 // to avoid a RenderNode cycle.
                 Box(
                     Modifier.fillMaxSize().then(
-                        if (AppRoutePolicy.isWebViewRoute(currentRoute)) Modifier else Modifier.layerBackdrop(menuBackdrop).glassSource(menuGlassBackdrop),
+                        if (AppRoutePolicy.isWebViewRoute(currentRoute)) Modifier
+                        else Modifier.layerBackdrop(menuBackdrop)
+                            // Record the LiquidUI menu source only while a menu is open: no cost the rest of the time.
+                            .then(if (LocalMenuState.current.isVisible) Modifier.glassSource(menuGlassBackdrop) else Modifier),
                     ),
                 ) {
                     Scaffold(

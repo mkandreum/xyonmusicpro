@@ -730,12 +730,16 @@ private fun NavGraphBuilder.sharedComposable(
         exitTransition = {
             val nextCollection = targetState.destination.route?.let { it.startsWith("album/") || it.contains("playlist/") } == true
             if (nextCollection) fadeOut(tween(PageExitMillis), targetAlpha = if (com.xyonmusic.music.ui.utils.isLibraryArtworkMorph()) 0f else .999f)
-            else fadeOut(tween(PageExitMillis), targetAlpha = 0.7f)
+            // The page underneath recedes slightly while the next one arrives.
+            else fadeOut(tween(PageExitMillis), targetAlpha = 0.7f) +
+                androidx.compose.animation.scaleOut(tween(PageExitMillis, easing = FastOutSlowInEasing), targetScale = 0.97f)
         },
         popEnterTransition = {
             val leavingCollection = initialState.destination.route?.let { it.startsWith("album/") || it.contains("playlist/") } == true
             if (leavingCollection) fadeIn(tween(PageEnterMillis), initialAlpha = if (com.xyonmusic.music.ui.utils.isLibraryArtworkMorph()) 0f else .999f)
-            else fadeIn(tween(PageEnterMillis), initialAlpha = 0.7f)
+            // Coming back: the page underneath grows back into place.
+            else fadeIn(tween(PageEnterMillis), initialAlpha = 0.7f) +
+                androidx.compose.animation.scaleIn(tween(PageEnterMillis, easing = FastOutSlowInEasing), initialScale = 0.97f)
         },
         popExitTransition = {
             if (collection) {
@@ -746,7 +750,8 @@ private fun NavGraphBuilder.sharedComposable(
                 slideOutHorizontally(tween(PageExitMillis, easing = FastOutSlowInEasing)) { it / 4 } +
                     fadeOut(tween(PageExitMillis, easing = FastOutSlowInEasing))
             } else {
-                fadeOut(Motion.appearExit())
+                fadeOut(Motion.appearExit()) +
+                    androidx.compose.animation.scaleOut(tween(PageExitMillis, easing = FastOutSlowInEasing), targetScale = 1.03f)
             }
         },
     ) { entry ->

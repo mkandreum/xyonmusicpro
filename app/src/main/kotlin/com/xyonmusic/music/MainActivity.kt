@@ -158,7 +158,7 @@ class MainActivity : ComponentActivity() {
                 val slop = android.view.ViewConfiguration.get(this).scaledTouchSlop
                 val moved = kotlin.math.hypot(ev.x - tapDownX, ev.y - tapDownY) > slop
                 if (!moved && ev.eventTime - tapDownAt < 350) {
-                    window.decorView.performHapticFeedback(android.view.HapticFeedbackConstants.KEYBOARD_TAP)
+                    com.xyonmusic.music.utils.Haptics.tick(this)
                 }
             }
         }
