@@ -344,7 +344,7 @@ fun AppearanceSettings(
         item(key = "all_appearance_settings") {
             Column {
         IosSettingsGroup(
-            title = "Theme & colors",
+            title = "Tema y colores",
             items = listOf(
                 IosSettingsItem(
                     icon = painterResource(R.drawable.palette),
@@ -369,7 +369,7 @@ fun AppearanceSettings(
         Spacer(modifier = Modifier.height(27.dp))
 
         IosSettingsGroup(
-            title = "App identity",
+            title = "Identidad de la app",
             items = listOf(
                 IosSettingsItem(
                     icon = painterResource(R.drawable.alphabet_cyrillic),
@@ -424,7 +424,7 @@ fun AppearanceSettings(
         Spacer(modifier = Modifier.height(27.dp))
 
         IosSettingsGroup(
-            title = "Display",
+            title = "Pantalla",
             items = buildList {
                 add(
                     IosSettingsItem(
@@ -446,7 +446,7 @@ fun AppearanceSettings(
         Spacer(modifier = Modifier.height(27.dp))
 
         IosSettingsGroup(
-            title = "Player & canvas",
+            title = "Reproductor y Canvas",
             items = listOfNotNull(
                 IosSettingsItem(
                     icon = painterResource(R.drawable.tune),
@@ -520,7 +520,7 @@ fun AppearanceSettings(
         Spacer(modifier = Modifier.height(27.dp))
 
         IosSettingsGroup(
-            title = "Lyrics layout",
+            title = "Diseño de la letra",
             items = listOfNotNull(
                 IosSettingsItem(
                     icon = painterResource(R.drawable.lyrics),
@@ -587,7 +587,7 @@ fun AppearanceSettings(
         Spacer(modifier = Modifier.height(27.dp))
 
         IosSettingsGroup(
-            title = "More",
+            title = "Más",
             items = listOf(
                 IosSettingsItem(
                     icon = painterResource(R.drawable.nav_bar),
@@ -833,7 +833,7 @@ fun ColumnScope.LyricsAnimationSheetContent() {
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "Tap a style to preview and apply it",
+                    text = "Toca un estilo para verlo y aplicarlo",
                     style = IosTheme.typography.footnote,
                     color = IosTheme.colors.secondaryLabel,
                 )

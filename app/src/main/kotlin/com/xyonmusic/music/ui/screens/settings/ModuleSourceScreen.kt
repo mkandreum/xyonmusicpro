@@ -177,7 +177,7 @@ fun ModuleSourceScreen(
 
             item {
                 Text(
-                    text = "SOURCES",
+                    text = "FUENTES",
                     style = AppTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                     color = AppTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(start = 20.dp, top = 8.dp, bottom = 8.dp)
@@ -333,7 +333,7 @@ fun ModuleSourceScreen(
             if (enabledOrder.isNotEmpty()) {
                 item {
                     Text(
-                        text = "ENABLED — DRAG TO SET PRIORITY",
+                        text = "ACTIVADOS: ARRASTRA PARA ORDENAR",
                         style = AppTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         color = AppTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp)
@@ -354,7 +354,7 @@ fun ModuleSourceScreen(
             if (availableModules.isNotEmpty()) {
                 item {
                     Text(
-                        text = "AVAILABLE MODULES",
+                        text = "MÓDULOS DISPONIBLES",
                         style = AppTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
                         color = AppTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(start = 20.dp, top = 16.dp, bottom = 8.dp)
@@ -615,7 +615,7 @@ private fun ModuleItem(
                 if (module.isLossless) {
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "LOSSLESS",
+                        text = "SIN PÉRDIDA",
                         style = AppTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
                         color = AppTheme.colorScheme.primary,
                         modifier = Modifier

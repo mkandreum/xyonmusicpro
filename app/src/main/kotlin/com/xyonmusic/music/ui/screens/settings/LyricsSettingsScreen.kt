@@ -65,7 +65,7 @@ fun LyricsSettingsScreen(navController: NavController) {
             ),
         ))
         LyricsFontSettings()
-        IosSettingsGroup(title = "Lyrics sources", items = listOf(
+        IosSettingsGroup(title = "Fuentes de letras", items = listOf(
             IosSettingsItem(
                 icon = painterResource(R.drawable.lyrics),
                 title = { Text("Provider order and availability") },
@@ -85,7 +85,7 @@ fun LyricsSettingsScreen(navController: NavController) {
             visualTransformation = androidx.compose.ui.text.input.PasswordVisualTransformation(),
         )
         IosSettingsGroup(
-            title = "Lyrics effects",
+            title = "Efectos de la letra",
             items = listOf(
                 IosSettingsItem(
                     icon = painterResource(R.drawable.lyrics),

@@ -238,7 +238,7 @@ fun ModuleDetailScreen(
         Spacer(Modifier.height(24.dp))
 
         Text(
-            text = "QUALITY SETTINGS",
+            text = "AJUSTES DE CALIDAD",
             style = AppTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
             color = AppTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 8.dp),
@@ -303,7 +303,7 @@ fun ModuleDetailScreen(
             Spacer(Modifier.height(16.dp))
 
             Text(
-                text = "Tidal Fallback Quality",
+                text = "Calidad de respaldo de Tidal",
                 style = AppTheme.typography.bodyMedium,
                 color = AppTheme.colorScheme.onSurfaceVariant,
             )

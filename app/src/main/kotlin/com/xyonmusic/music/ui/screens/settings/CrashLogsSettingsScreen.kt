@@ -50,11 +50,11 @@ fun CrashLogsSettingsScreen(navController: NavController) {
 
     SettingsPage(
         navController = navController,
-        title = "Crash report",
+        title = "Informe de fallos",
         horizontalPadding = 16.dp,
     ) {
         Text(
-            text = "If XyonMusic closes unexpectedly, its latest crash report appears here. You can copy or share it when asking for help.",
+            text = "Si XyonMusic se cierra de repente, aquí aparece el último informe de fallo. Puedes copiarlo o compartirlo al pedir ayuda.",
             style = IosTheme.typography.body,
             color = IosTheme.colors.secondaryLabel,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp),
@@ -63,7 +63,7 @@ fun CrashLogsSettingsScreen(navController: NavController) {
 
         if (report == null) {
             Text(
-                text = "Checking for a report…",
+                text = "Buscando un informe…",
                 style = IosTheme.typography.body,
                 color = IosTheme.colors.secondaryLabel,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp),
@@ -80,7 +80,7 @@ fun CrashLogsSettingsScreen(navController: NavController) {
             )
         } else {
             IosSettingsGroup(
-                title = "Latest report",
+                title = "Último informe",
                 items = listOf(
                     IosSettingsItem(
                         icon = painterResource(R.drawable.content_copy),

@@ -333,16 +333,6 @@ fun PlayerMenu(
                             },
                         )
                     )
-                    add(
-                        IosMenuItemData(
-                            title = { Text(text = stringResource(R.string.audio_devices)) },
-                            icon = { SymbolIcon(symbol = sf("airplayaudio"), contentDescription = null, size = 24.dp) },
-                            onClick = {
-                                onDismiss()
-                                showAudioDevices = true
-                            },
-                        )
-                    )
                     if (mediaMetadata.album != null) {
                         add(
                             IosMenuItemData(
@@ -395,159 +385,24 @@ fun PlayerMenu(
 
         item { Spacer(modifier = Modifier.height(12.dp)) }
 
-        if (!mediaMetadata.isLocalFile) item {
-            IosMenuGroup(
-                items = listOf(
-                    when (download?.state) {
-                        Download.STATE_COMPLETED -> {
-                            IosMenuItemData(
-                                title = {
-                                    Text(
-                                        text = stringResource(R.string.remove_download)
-                                    )
-                                },
-                                icon = {
-                                    SymbolIcon(symbol = sf("arrow.down.circle"), contentDescription = null, size = 24.dp)
-                                },
-                                onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        mediaMetadata.id,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-
-                        Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                            IosMenuItemData(
-                                title = { Text(text = stringResource(R.string.downloading)) },
-                                icon = {
-                                    DownloadRingIcon(download)
-                                },
-                                onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        mediaMetadata.id,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-
-                        else -> {
-                            IosMenuItemData(
-                                title = { Text(text = stringResource(R.string.action_download)) },
-                                icon = {
-                                    SymbolIcon(symbol = sf("arrow.down.circle"), contentDescription = null, size = 24.dp)
-                                },
-                                onClick = {
-                                    database.transaction {
-                                        insert(mediaMetadata)
-                                    }
-                                    val downloadRequest =
-                                        DownloadRequest
-                                            .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
-                                            .setCustomCacheKey(mediaMetadata.id)
-                                            .setData(mediaMetadata.title.toByteArray())
-                                            .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
-                                }
-                            )
-                        }
-                    }
-                )
-            )
-        }
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
-
-
-
-        item { Spacer(modifier = Modifier.height(12.dp)) }
+item { Spacer(modifier = Modifier.height(12.dp)) }
 
         item {
-            IosMenuGroup(
-                items = buildList {
-                    add(
-                        IosMenuItemData(
-                            title = { Text(text = stringResource(R.string.details)) },
-                            description = { Text(text = stringResource(R.string.details_desc)) },
-                            icon = {
-                                SymbolIcon(symbol = sf("info.circle"), contentDescription = null, size = 24.dp)
-                            },
-                            onClick = {
-                                onShowDetailsDialog()
-                                onDismiss()
-                            }
-                        )
+            // Compact menu: only the equalizer down here; download, details, tempo, ringtone and
+            // ambient mode are gone (download lives in the player itself).
+            if (isQueueTrigger != true) IosMenuGroup(
+                items = listOf(
+                    IosMenuItemData(
+                        title = { Text(text = stringResource(R.string.equalizer)) },
+                        icon = {
+                            SymbolIcon(symbol = sf("slider.vertical.3"), contentDescription = null, size = 24.dp)
+                        },
+                        onClick = {
+                            navController.navigate("settings/equalizer")
+                            onDismiss()
+                        }
                     )
-
-                    if (isQueueTrigger != true) {
-                        add(
-                            IosMenuItemData(
-                                title = { Text(text = stringResource(R.string.equalizer)) },
-                                description = { Text(text = stringResource(R.string.equalizer_desc)) },
-                                icon = {
-                                    SymbolIcon(symbol = sf("slider.vertical.3"), contentDescription = null, size = 24.dp)
-                                },
-                                onClick = {
-                                    navController.navigate("settings/equalizer")
-                                    onDismiss()
-                                }
-                            )
-                        )
-                        add(
-                            IosMenuItemData(
-                                title = { Text(text = stringResource(R.string.advanced)) },
-                                description = { Text(text = stringResource(R.string.advanced_desc)) },
-                                icon = {
-                                    SymbolIcon(symbol = sf("slider.horizontal.3"), contentDescription = null, size = 24.dp)
-                                },
-                                onClick = {
-                                    showPitchTempoDialog = true
-                                }
-                            )
-                        )
-                    }
-                    add(
-                        IosMenuItemData(
-                            title = { Text(text = stringResource(R.string.set_as_ringtone)) },
-                            icon = {
-                                SymbolIcon(symbol = sf("SFBellFill"), contentDescription = null, size = 24.dp)
-                            },
-                            onClick = {
-                                ringtoneViewModel.showTrimmer(
-                                    mediaMetadata.id,
-                                    mediaMetadata.title,
-                                    mediaMetadata.artists.joinToString { it.name },
-                                    mediaMetadata.duration
-                                )
-                                onDismiss()
-                            }
-                        )
-                    )
-                    add(
-                        IosMenuItemData(
-                            title = { Text(text = stringResource(R.string.ambient_mode)) },
-                            icon = {
-                                SymbolIcon(symbol = sf("arrow.up.left.and.arrow.down.right"), contentDescription = null, size = 24.dp)
-                            },
-                            onClick = {
-                                navController.navigate("ambient_mode")
-                                playerBottomSheetState.collapseSoft()
-                                onDismiss()
-                            }
-                        )
-                    )
-                }
+                )
             )
         }
     }

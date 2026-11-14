@@ -324,7 +324,7 @@ fun GlassEffectSettings(
         Column(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "Blur strength",
+                    text = "Intensidad del desenfoque",
                     style = AppTheme.typography.titleMedium,
                     modifier = Modifier.weight(1f),
                 )
@@ -355,7 +355,7 @@ fun GlassEffectSettings(
         ) {
         Column {
         Text(
-            text = "Advanced glass controls",
+            text = "Controles avanzados del cristal",
             style = AppTheme.typography.titleMedium,
             color = AppTheme.colorScheme.secondary,
             modifier = Modifier.padding(start = 4.dp, bottom = 12.dp),
@@ -604,7 +604,7 @@ fun GlassEffectSettings(
         ) {
             Column {
             IosSettingsGroup(
-                title = "More controls",
+                title = "Más controles",
                 items = listOf(
                     IosSettingsItem(
                         icon = painterResource(R.drawable.tune),

@@ -168,23 +168,28 @@ private fun IosSettingsIconTile(icon: Painter, item: IosSettingsItem) {
 
     Box(contentAlignment = Alignment.TopEnd) {
         if (item.tintIcon) {
+            // Glassy tile, same finish as the Settings root: accent gradient with a light rim.
+            val base = when {
+                !item.enabled -> colors.systemGray3
+                else -> IosTheme.tint
+            }
+            val tile = item.iconShape ?: ContinuousRoundedRectangle(10.dp)
             Box(
                 modifier = Modifier
-                    .size(IosMetrics.IconTileSize)
-                    .clip(item.iconShape ?: ContinuousRoundedRectangle(IosMetrics.IconTileRadius))
+                    .size(34.dp)
+                    .clip(tile)
                     .background(
-                        when {
-                            !item.enabled -> colors.systemGray3
-                            item.isHighlighted -> IosTheme.tint
-                            else -> IosTheme.tint.copy(alpha = 0.9f)
-                        }
-                    ),
+                        androidx.compose.ui.graphics.Brush.verticalGradient(
+                            listOf(androidx.compose.ui.graphics.lerp(base, Color.White, 0.22f), base)
+                        )
+                    )
+                    .border(1.dp, Color.White.copy(alpha = 0.28f), tile),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
                     painter = icon,
                     contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                    modifier = Modifier.size(19.dp),
                     colorFilter = ColorFilter.tint(Color.White),
                 )
             }

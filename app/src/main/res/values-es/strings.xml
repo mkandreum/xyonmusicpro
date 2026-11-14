@@ -906,4 +906,9 @@
     <string name="color_light_gray">Gris claro</string>
     <string name="color_black">Negro</string>
     <string name="modules">Módulos</string>
+    <string name="add_to_an_playlist">Añadir</string>
+    <string name="ask_before_replacing_queue">Preguntar antes de cambiar la cola</string>
+    <string name="ask_before_replacing_queue_desc">Si ya hay algo sonando, elige si mantener o vaciar la cola</string>
+    <string name="song_transitions">Transiciones entre canciones</string>
+    <string name="transition_off">Desactivadas</string>
 </resources>

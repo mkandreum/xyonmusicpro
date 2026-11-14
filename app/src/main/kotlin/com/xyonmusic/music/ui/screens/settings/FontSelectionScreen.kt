@@ -163,7 +163,7 @@ fun FontSelectionScreen(
                     )
 
                     Text(
-                        text = "Expressive typeface is applied to display, headlines, and titles. Body copy and labels remain in the system font for maximum readability.",
+                        text = "La tipografía expresiva se usa en titulares y títulos. El resto del texto mantiene la fuente del sistema para leerse mejor.",
                         style = AppTheme.typography.bodyMedium,
                         color = AppTheme.colorScheme.onSurfaceVariant
                     )
