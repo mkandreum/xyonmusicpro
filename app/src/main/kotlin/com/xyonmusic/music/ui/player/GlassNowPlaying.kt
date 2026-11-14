@@ -157,7 +157,8 @@ fun GlassNowPlaying(
     }
 
     var pane by remember { mutableStateOf(NowPlayingPane.Cover) }
-    BackHandler(enabled = pane != NowPlayingPane.Cover) { pane = NowPlayingPane.Cover }
+    // Registered only while lyrics/queue are open, so it sits above the sheet's own back handler.
+    if (pane != NowPlayingPane.Cover) BackHandler { pane = NowPlayingPane.Cover }
 
     val backdrop = rememberGlassBackdrop()
     val placeholder = rememberNoArtworkPainter()

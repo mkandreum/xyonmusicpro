@@ -264,7 +264,9 @@ private fun LiquidNavBarChrome(
                 com.xyonmusic.music.utils.Haptics.click(navContext)
                 when {
                     screen == Screens.Search -> if (searchModeActive) navSearch.onTapBar() else navSearch.onTapSearchIcon()
-                    searchModeActive -> navSearch.onExit()
+                    // On Descubrir (the search landing) the bar is in search mode: staying put is a no-op,
+                    // any other tab navigates there directly (tap or lens drag), instead of only closing search.
+                    searchModeActive && screen == Screens.Discover -> Unit
                     else -> onItemClick(screen, isRouteSelected(currentRoute, screen.route, navigationItems))
                 }
             },
@@ -295,7 +297,11 @@ private fun LiquidNavBarChrome(
                             mode = SfRenderingMode.Monochrome,
                         )
                     },
-                    onClick = { if (searchModeActive) navSearch.onTapBar() else navSearch.onTapSearchIcon() },
+                    onClick = {
+                        // Always opens the search field: from Descubrir directly, from elsewhere after moving there.
+                        if (!searchModeActive) navSearch.onTapSearchIcon()
+                        navSearch.onTapBar()
+                    },
                 )
             },
             accessory = if (showPlayerAccessory) {

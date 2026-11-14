@@ -471,8 +471,8 @@ private fun AppleSearchHeader(
         verticalAlignment = Alignment.Top,
     ) {
         Text(
-            text = stringResource(R.string.search),
-            style = com.xyonmusic.music.ui.screens.library.apple.SfStyle(34.sp, 41.sp, FontWeight.Bold, 0.4.sp),
+            text = stringResource(R.string.tab_discover),
+            style = com.xyonmusic.music.ui.screens.library.apple.SfStyle(34.sp, 41.sp, FontWeight.Bold, 0.4.sp).copy(fontFamily = com.xyonmusic.music.ui.theme.DisplayFontFamily),
             color = com.xyonmusic.music.ui.ios.foundation.IosTheme.colors.label,
             maxLines = 1,
             modifier = Modifier.weight(1f).height(41.dp),
