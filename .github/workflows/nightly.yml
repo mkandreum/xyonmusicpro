@@ -69,6 +69,8 @@ jobs:
           ./gradlew assembleUniversalGmsRelease -Pnightly=true -PnightlyRun=${{ github.run_number }} --no-configuration-cache --console=plain --warning-mode summary -x lint
 
       - name: Upload Signed APK
+        # Artifact storage can fill up; that must not fail an otherwise good build.
+        continue-on-error: true
         uses: actions/upload-artifact@v7
         with:
           retention-days: 3
