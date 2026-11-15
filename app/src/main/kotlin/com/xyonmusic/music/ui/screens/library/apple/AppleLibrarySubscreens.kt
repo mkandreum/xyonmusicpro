@@ -16,6 +16,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
@@ -862,18 +863,19 @@ private fun SongRow(song: Song, navController: NavController, onPlay: () -> Unit
             subtitle = song.artists.joinToString { it.name },
             chevron = false,
             trailing = {
-                // Downloaded songs carry a small mark, so a separate Downloads tab is not needed.
-                if (song.song.isDownloaded) {
-                    IosGlyph(sf("SFArrowDownCircle"), IosTheme.colors.secondaryLabel, 16.dp)
-                    Spacer(Modifier.width(4.dp))
-                }
+                // Every song shows where it stands: downloaded, downloading (ring), failed, or a
+                // faint arrow that downloads it on tap.
+                SongDownloadState(song)
                 Box {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .size(36.dp)
                             .menuTrigger { dots = true },
-                    ) { IosGlyph(sf("ellipsis"), IosTheme.colors.label, 20.dp) }
+                    ) {
+                        // Plain ink: the chromed (dodge) glyph disappears on a pure black list.
+                        com.xyonmusic.music.ui.component.SymbolIcon(sf("ellipsis"), contentDescription = "Más", size = 20.dp, tint = IosTheme.colors.label, chrome = 0f)
+                    }
                     DropdownMenu(expanded = dots, onDismissRequest = { dots = false }) {
                         (entries.quick + entries.sections.flatMap { it.items }).forEachIndexed { i, item ->
                             if (i == entries.quick.size && i > 0) IosMenuDivider()
@@ -946,7 +948,11 @@ private fun DownloadMissingButton(songs: List<Song>, modifier: Modifier = Modifi
             downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_QUEUED
     }
     if (missing.isEmpty()) return
-    val label = if (missing.size == online.size) "Descargar todas" else "Descargar las ${missing.size} que faltan"
+    val label = when {
+        missing.size == online.size -> "Descargar todas"
+        missing.size == 1 -> "Descargar la que falta"
+        else -> "Descargar las ${missing.size} que faltan"
+    }
     Row(
         modifier
             .clip(CircleShape)
@@ -1030,4 +1036,54 @@ internal fun songMenu(song: Song, navController: NavController): SongMenuEntries
         ),
     ).filter { it.items.isNotEmpty() }
     return SongMenuEntries(quick, sections, addToPlaylist)
+}
+
+
+/** Download state of one song in the list, with a tap to download (or retry) when it is not on the device. */
+@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@Composable
+private fun SongDownloadState(song: Song) {
+    val context = LocalContext.current
+    val downloadUtil = LocalDownloadUtil.current.get()
+    val download by remember(song.id) { downloadUtil.getDownload(song.id) }.collectAsStateWithLifecycle(initialValue = null)
+    val state = download?.state
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val startDownload = {
+        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+        com.xyonmusic.music.playback.downloadSongs(
+            context,
+            listOf(com.xyonmusic.music.playback.DownloadTarget(song.id, song.song.title, song.artists.firstOrNull()?.name)),
+            downloadUtil.downloads.value,
+        )
+    }
+    androidx.compose.animation.AnimatedContent(
+        targetState = when {
+            state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED || (download == null && song.song.isDownloaded) -> 2
+            state == androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING ||
+                state == androidx.media3.exoplayer.offline.Download.STATE_QUEUED ||
+                state == androidx.media3.exoplayer.offline.Download.STATE_RESTARTING -> 1
+            state == androidx.media3.exoplayer.offline.Download.STATE_FAILED -> 3
+            else -> 0
+        },
+        transitionSpec = {
+            (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) +
+                androidx.compose.animation.scaleIn(androidx.compose.animation.core.spring(0.55f, 500f), initialScale = 0.6f)) togetherWith
+                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120))
+        },
+        label = "songDownloadState",
+    ) { s ->
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(32.dp)
+                .then(if (s == 0 || s == 3) Modifier.clickable(onClickLabel = "Descargar") { startDownload() } else Modifier),
+        ) {
+            when (s) {
+                2 -> com.xyonmusic.music.ui.component.SymbolIcon(sf("arrow.down.circle.fill"), contentDescription = "Descargada", size = 20.dp, tint = IosTheme.tint, chrome = 0f)
+                1 -> com.xyonmusic.music.ui.component.DownloadRingIcon(download, size = 20.dp)
+                3 -> com.xyonmusic.music.ui.component.SymbolIcon(sf("exclamationmark.circle"), contentDescription = "Error al descargar", size = 20.dp, tint = androidx.compose.ui.graphics.Color(0xFFFF6B60), chrome = 0f)
+                else -> com.xyonmusic.music.ui.component.SymbolIcon(sf("arrow.down.circle"), contentDescription = "Descargar", size = 20.dp, tint = IosTheme.colors.secondaryLabel.copy(alpha = 0.55f), chrome = 0f)
+            }
+        }
+    }
 }

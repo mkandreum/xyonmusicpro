@@ -542,11 +542,6 @@ fun LazyItemScope.LyricItem(
     val unfocusedColor = Color(0x2EFFFFFF)
 
     val unfocusedSolidBrush = SolidColor(unfocusedColor)
-    val currentLineChrome = animateFloatAsState(
-        targetValue = if (isCurrentLambda()) 1f else 0f,
-        animationSpec = tween(durationMillis = 240, easing = yosEasing),
-        label = "currentLyricChrome",
-    )
 
     val isNotOneByOne = rememberSaveable(mainLyric) {
         mutableStateOf(
@@ -615,7 +610,9 @@ fun LazyItemScope.LyricItem(
             val cardPadding = if (otherSide) {
                 Modifier.padding(start = 28.dp)
             } else {
-                Modifier.padding(end = 28.dp)
+                // Only duets need the wide gutter (it separates the second singer); a plain line
+                // keeps a small one so the text block sits balanced on screen.
+                Modifier.padding(end = 6.dp)
             }
 
             if (isLyricEmpty()) {
@@ -740,12 +737,22 @@ fun LazyItemScope.LyricItem(
                                         animationSpec = if (isCurrentLambda()) alphaTweenSpecWithDelay else alphaTweenSpecWithoutDelay
                                     )
 
+                                    // Word-by-word lines light their words as they are sung, so once sung they
+                                    // stay fully lit; dim them when finished so only the current line stands out.
+                                    val wordLineSung = remember(mainLyric) {
+                                        derivedStateOf { !isCurrentLambda() && liveTime.intValue >= mainLyric.last().first }
+                                    }
+                                    val sungDim = animateFloatAsState(
+                                        targetValue = if (wordLineSung.value) 0.35f else 1f,
+                                        animationSpec = alphaTweenSpecWithoutDelay,
+                                        label = "sungLineDim",
+                                    )
                                     val thisAlpha = remember(mainLyric) {
                                         derivedStateOf {
                                             if (isNotOneByOne.value) {
                                                 thisAlphaAnimated.value
                                             } else {
-                                                1f
+                                                sungDim.value
                                             }
                                         }
                                     }
@@ -791,48 +798,6 @@ fun LazyItemScope.LyricItem(
                                             .padding(vertical = 4.dp)
                                             .then(otherSidePadding.value)
                                             .padding(horizontal = 10.dp, vertical = 5.dp)
-                                            .drawBehind {
-                                                val intensity = currentLineChrome.value
-                                                if (intensity > 0.001f) {
-                                                    val radius = CornerRadius(size.height / 2f)
-                                                    val accent = mainTextBasicColor
-                                                    drawRoundRect(
-                                                        brush = Brush.verticalGradient(
-                                                            colors = listOf(
-                                                                Color.White.copy(alpha = 0.025f * intensity),
-                                                                accent.copy(alpha = 0.075f * intensity),
-                                                                accent.copy(alpha = 0.035f * intensity),
-                                                            ),
-                                                        ),
-                                                        cornerRadius = radius,
-                                                    )
-                                                    drawRoundRect(
-                                                        brush = Brush.verticalGradient(
-                                                            colors = listOf(
-                                                                Color.White.copy(alpha = 0.30f * intensity),
-                                                                accent.copy(alpha = 0.11f * intensity),
-                                                                Color.White.copy(alpha = 0.04f * intensity),
-                                                            ),
-                                                        ),
-                                                        cornerRadius = radius,
-                                                        style = Stroke(width = 1.dp.toPx()),
-                                                    )
-                                                    drawLine(
-                                                        brush = Brush.horizontalGradient(
-                                                            colors = listOf(
-                                                                Color.Transparent,
-                                                                Color.White.copy(alpha = 0.38f * intensity),
-                                                                accent.copy(alpha = 0.22f * intensity),
-                                                                Color.Transparent,
-                                                            ),
-                                                        ),
-                                                        start = Offset(12.dp.toPx(), size.height - 1.dp.toPx()),
-                                                        end = Offset(size.width - 12.dp.toPx(), size.height - 1.dp.toPx()),
-                                                        strokeWidth = 1.5.dp.toPx(),
-                                                        cap = androidx.compose.ui.graphics.StrokeCap.Round,
-                                                    )
-                                                }
-                                            }
                                             .clickable(
                                                 indication = null,
                                                 interactionSource = remember { MutableInteractionSource() }
