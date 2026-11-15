@@ -722,24 +722,23 @@ private fun NavGraphBuilder.sharedComposable(
                 slideInHorizontally(tween(PageEnterMillis, easing = FastOutSlowInEasing)) { it } +
                     fadeIn(tween(PageEnterMillis, easing = FastOutSlowInEasing))
             } else {
-                // Top-level screens settle in with a small spring scale instead of a flat fade.
-                fadeIn(tween(Motion.PushMillis)) +
-                    androidx.compose.animation.scaleIn(androidx.compose.animation.core.spring(dampingRatio = 0.86f, stiffness = 420f), initialScale = 0.965f)
+                // Fade-through, no scale: a scaled page shows its edges inside the screen margins.
+                fadeIn(tween(220, delayMillis = 70, easing = FastOutSlowInEasing))
             }
         },
         exitTransition = {
             val nextCollection = targetState.destination.route?.let { it.startsWith("album/") || it.contains("playlist/") } == true
             if (nextCollection) fadeOut(tween(PageExitMillis), targetAlpha = if (com.xyonmusic.music.ui.utils.isLibraryArtworkMorph()) 0f else .999f)
-            // The page underneath recedes slightly while the next one arrives.
-            else fadeOut(tween(PageExitMillis), targetAlpha = 0.7f) +
-                androidx.compose.animation.scaleOut(tween(PageExitMillis, easing = FastOutSlowInEasing), targetScale = 0.97f)
+            // Switching tabs: the old page leaves quickly so the two never show at once.
+            else if (targetState.destination.route in Screens.MainRoutes) fadeOut(tween(90))
+            // The page underneath dims while the next one arrives (no scale: it would show its edges).
+            else fadeOut(tween(PageExitMillis), targetAlpha = 0.7f)
         },
         popEnterTransition = {
             val leavingCollection = initialState.destination.route?.let { it.startsWith("album/") || it.contains("playlist/") } == true
             if (leavingCollection) fadeIn(tween(PageEnterMillis), initialAlpha = if (com.xyonmusic.music.ui.utils.isLibraryArtworkMorph()) 0f else .999f)
-            // Coming back: the page underneath grows back into place.
-            else fadeIn(tween(PageEnterMillis), initialAlpha = 0.7f) +
-                androidx.compose.animation.scaleIn(tween(PageEnterMillis, easing = FastOutSlowInEasing), initialScale = 0.97f)
+            // Coming back: the page underneath brightens back.
+            else fadeIn(tween(PageEnterMillis), initialAlpha = 0.7f)
         },
         popExitTransition = {
             if (collection) {
@@ -750,8 +749,7 @@ private fun NavGraphBuilder.sharedComposable(
                 slideOutHorizontally(tween(PageExitMillis, easing = FastOutSlowInEasing)) { it / 4 } +
                     fadeOut(tween(PageExitMillis, easing = FastOutSlowInEasing))
             } else {
-                fadeOut(Motion.appearExit()) +
-                    androidx.compose.animation.scaleOut(tween(PageExitMillis, easing = FastOutSlowInEasing), targetScale = 1.03f)
+                fadeOut(tween(90))
             }
         },
     ) { entry ->

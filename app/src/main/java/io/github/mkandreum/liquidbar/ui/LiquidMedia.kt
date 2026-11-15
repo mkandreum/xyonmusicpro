@@ -507,8 +507,8 @@ fun LiquidMiniPlayer(
             artwork(Modifier.size(36.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(9.dp)))
             Spacer(Modifier.width(8.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, color = contentColor, fontSize = 12.sp, lineHeight = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(subtitle, color = contentColor.copy(alpha = 0.7f), fontSize = 10.sp, lineHeight = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(title, color = contentColor, fontSize = 13.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, color = contentColor.copy(alpha = 0.7f), fontSize = 11.sp, lineHeight = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             MiniGlyphButton(interactive, play) { playGlyph(isPlaying, 20.dp) }
         }
@@ -520,8 +520,8 @@ fun LiquidMiniPlayer(
             artwork(Modifier.size(36.dp).clip(androidx.compose.foundation.shape.RoundedCornerShape(8.dp)))
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) {
-                Text(title, color = contentColor, fontSize = 14.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(subtitle, color = contentColor.copy(alpha = 0.7f), fontSize = 12.sp, lineHeight = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(title, color = contentColor, fontSize = 16.sp, lineHeight = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, color = contentColor.copy(alpha = 0.72f), fontSize = 13.5.sp, lineHeight = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             Spacer(Modifier.width(10.dp))
             MiniGlyphButton(interactive, play) { playGlyph(isPlaying, 22.dp) }

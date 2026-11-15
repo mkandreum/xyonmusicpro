@@ -142,6 +142,9 @@ private class GlassNode(
             val pad = ceil(l.blur * 2f + l.refractionAmount + 2f)
             val w = (size.width + pad * 2).toInt().coerceAtLeast(1)
             val h = (size.height + pad * 2).toInt().coerceAtLeast(1)
+            // Clip to the surface (plus the blur margin): unclipped, blur and refraction would
+            // process the whole backdrop for every glass piece on every frame.
+            glassLayer.clip = true
             glassLayer.record(IntSize(w, h)) {
                 for (s in sources()) {
                     val src = s.backdrop
