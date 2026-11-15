@@ -119,7 +119,7 @@ fun AccountScreen(
                     YouTubeGridItem(
                         item = item,
                         fillMaxWidth = true,
-                        modifier = Modifier
+                        modifier = Modifier.animateItem()
                             .combinedBounceClick(
                                 onClick = {
                                     navController.navigate(onlinePlaylistRoute(item.id, item.title, item.thumbnail))
@@ -155,7 +155,7 @@ fun AccountScreen(
                     YouTubeGridItem(
                         item = item,
                         fillMaxWidth = true,
-                        modifier = Modifier
+                        modifier = Modifier.animateItem()
                             .combinedBounceClick(
                                 onClick = {
                                     navController.navigate(albumRoute(item.id, item.thumbnail))
@@ -191,7 +191,7 @@ fun AccountScreen(
                     YouTubeGridItem(
                         item = item,
                         fillMaxWidth = true,
-                        modifier = Modifier
+                        modifier = Modifier.animateItem()
                             .combinedBounceClick(
                                 onClick = {
                                     navController.navigate(artistRoute(item.id, item.thumbnail))

@@ -438,7 +438,7 @@ fun ApplePlaylistsPage(navController: NavController, onBack: () -> Unit, viewMod
         }
         if (viewType == LibraryViewType.LIST) {
             items(playlists, key = { it.id }, contentType = { "row" }) { playlist ->
-                LibraryItemMenu(playlist, onOpen = { navController.navigate(localPlaylistRoute(playlist.id, playlist.thumbnails.firstOrNull())) }) {
+                Box(Modifier.animateItem()) { LibraryItemMenu(playlist, onOpen = { navController.navigate(localPlaylistRoute(playlist.id, playlist.thumbnails.firstOrNull())) }) {
                     ArtRow(
                         art = playlist.thumbnails.firstOrNull(),
                         artworkId = playlist.id,
@@ -447,7 +447,7 @@ fun ApplePlaylistsPage(navController: NavController, onBack: () -> Unit, viewMod
                         title = playlist.title,
                         subtitle = pluralStringResource(R.plurals.n_song, playlist.songCount, playlist.songCount),
                     )
-                }
+                } }
             }
         } else {
             gridItems(playlists) { item ->
@@ -466,7 +466,7 @@ private fun LazyListScope.gridItems(list: List<LocalItem>, tile: @Composable (Lo
     items(list.chunked(2), key = { "grid_" + it.first().id }, contentType = { "grid_row" }) { pair ->
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
+            modifier = Modifier.animateItem().padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
         ) {
             pair.forEach { Box(Modifier.weight(1f)) { tile(it) } }
             if (pair.size == 1) Spacer(Modifier.weight(1f))
@@ -509,7 +509,7 @@ fun AppleArtistsPage(navController: NavController, onBack: () -> Unit, viewModel
             return@AppleSubpage
         }
         items(artists, key = { it.id }, contentType = { "row" }) { artist: Artist ->
-            ArtRow(
+            Box(Modifier.animateItem()) { ArtRow(
                 art = artist.artist.thumbnailUrl,
                 artSize = 48.dp,
                 rowHeight = 56.dp,
@@ -517,7 +517,7 @@ fun AppleArtistsPage(navController: NavController, onBack: () -> Unit, viewModel
                 subtitle = null,
                 circle = true,
                 onClick = { navController.navigate(artistRoute(artist.id, artist.artist.thumbnailUrl)) },
-            )
+            ) }
         }
     }
 }
@@ -791,15 +791,15 @@ private fun AppleSongList(
             var offset = 0
             sections.forEach { (letter, list) ->
                 val base = offset
-                item(key = "h_$letter", contentType = "header") { LetterHeader(letter) }
+                item(key = "h_$letter", contentType = "header") { Box(Modifier.animateItem()) { LetterHeader(letter) } }
                 itemsIndexed(list, key = { _, s -> s.id }, contentType = { _, _ -> "song" }) { i, song ->
-                    SongRow(song, navController) { play(base + i) }
+                    Box(Modifier.animateItem()) { SongRow(song, navController) { play(base + i) } }
                 }
                 offset += list.size
             }
         } else {
             itemsIndexed(songs, key = { _, s -> s.id }, contentType = { _, _ -> "song" }) { i, song ->
-                SongRow(song, navController) { play(i) }
+                Box(Modifier.animateItem()) { SongRow(song, navController) { play(i) } }
             }
         }
     }

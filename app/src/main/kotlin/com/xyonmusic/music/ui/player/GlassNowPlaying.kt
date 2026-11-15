@@ -227,7 +227,18 @@ fun GlassNowPlaying(
                 )
             }
 
-            if (pane == NowPlayingPane.Cover) {
+            // Cover <-> lyrics/queue: fade with a slight zoom instead of a hard swap.
+            AnimatedContent(
+                targetState = pane == NowPlayingPane.Cover,
+                transitionSpec = {
+                    (fadeIn(tween(260, delayMillis = 60)) + androidx.compose.animation.scaleIn(tween(320, easing = androidx.compose.animation.core.FastOutSlowInEasing), initialScale = 0.96f)) togetherWith
+                        fadeOut(tween(140))
+                },
+                label = "nowPlayingCover",
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+            ) { cover ->
+            Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+            if (cover) {
                 // Disc, title and controls in one column: no dead space between them.
                 val openArtist: (() -> Unit)? = song?.artists?.firstOrNull { it.id != null }?.id?.let { id ->
                     {
@@ -294,6 +305,8 @@ fun GlassNowPlaying(
                     }
                 }
                 controls(Modifier.fillMaxWidth().height(200.dp))
+            }
+            }
             }
         }
     }

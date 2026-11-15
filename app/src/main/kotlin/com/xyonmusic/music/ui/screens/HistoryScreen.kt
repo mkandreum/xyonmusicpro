@@ -342,7 +342,7 @@ fun HistoryScreen(
                                         SymbolIcon(symbol = sf("ellipsis"), contentDescription = null)
                                     }
                                 },
-                                modifier = Modifier
+                                modifier = Modifier.animateItem()
                                     .fillMaxWidth()
                                     .combinedBounceClick(
                                         onClick = {
@@ -427,7 +427,7 @@ fun HistoryScreen(
                                         }
                                     }
                                 },
-                                modifier = Modifier
+                                modifier = Modifier.animateItem()
                                     .fillMaxWidth()
                                     .combinedBounceClick(
                                         onClick = {

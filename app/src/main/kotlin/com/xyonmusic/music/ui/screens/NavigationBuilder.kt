@@ -703,6 +703,8 @@ fun NavGraphBuilder.navigationBuilder(
  * Publishes the destination's [AnimatedVisibilityScope] and its artwork id so the hero
  * can claim its half of the shared element without any per-screen plumbing.
  */
+private const val TabFadeMillis = 200
+
 private fun NavGraphBuilder.sharedComposable(
     route: String,
     arguments: List<NamedNavArgument> = emptyList(),
@@ -722,22 +724,25 @@ private fun NavGraphBuilder.sharedComposable(
                 slideInHorizontally(tween(PageEnterMillis, easing = FastOutSlowInEasing)) { it } +
                     fadeIn(tween(PageEnterMillis, easing = FastOutSlowInEasing))
             } else {
-                // Fade-through, no scale: a scaled page shows its edges inside the screen margins.
-                fadeIn(tween(220, delayMillis = 70, easing = FastOutSlowInEasing))
+                // The new tab fades in over the old one, which stays opaque underneath: no gap
+                // where only the window background shows (flicker), no scale (cropped edges).
+                fadeIn(tween(TabFadeMillis, easing = FastOutSlowInEasing))
             }
         },
         exitTransition = {
             val nextCollection = targetState.destination.route?.let { it.startsWith("album/") || it.contains("playlist/") } == true
             if (nextCollection) fadeOut(tween(PageExitMillis), targetAlpha = if (com.xyonmusic.music.ui.utils.isLibraryArtworkMorph()) 0f else .999f)
-            // Switching tabs: the old page leaves quickly so the two never show at once.
-            else if (targetState.destination.route in Screens.MainRoutes) fadeOut(tween(90))
+            // Switching tabs: stay opaque under the incoming page until it has faded in.
+            else if (targetState.destination.route in Screens.MainRoutes) fadeOut(tween(TabFadeMillis), targetAlpha = .999f)
             // The page underneath dims while the next one arrives (no scale: it would show its edges).
             else fadeOut(tween(PageExitMillis), targetAlpha = 0.7f)
         },
         popEnterTransition = {
             val leavingCollection = initialState.destination.route?.let { it.startsWith("album/") || it.contains("playlist/") } == true
             if (leavingCollection) fadeIn(tween(PageEnterMillis), initialAlpha = if (com.xyonmusic.music.ui.utils.isLibraryArtworkMorph()) 0f else .999f)
-            // Coming back: the page underneath brightens back.
+            // Back to a tab from another tab: already opaque underneath the page that fades away.
+            else if (initialState.destination.route in Screens.MainRoutes) fadeIn(tween(TabFadeMillis), initialAlpha = .999f)
+            // Coming back from a detail page: the page underneath brightens back.
             else fadeIn(tween(PageEnterMillis), initialAlpha = 0.7f)
         },
         popExitTransition = {
@@ -749,7 +754,8 @@ private fun NavGraphBuilder.sharedComposable(
                 slideOutHorizontally(tween(PageExitMillis, easing = FastOutSlowInEasing)) { it / 4 } +
                     fadeOut(tween(PageExitMillis, easing = FastOutSlowInEasing))
             } else {
-                fadeOut(tween(90))
+                // On top while popping: fade away over the opaque page underneath.
+                fadeOut(tween(TabFadeMillis, easing = FastOutSlowInEasing))
             }
         },
     ) { entry ->

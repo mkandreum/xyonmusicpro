@@ -462,7 +462,7 @@ fun AutoPlaylistScreen(
                                         }
                                     }
                                 },
-                                modifier = Modifier
+                                modifier = Modifier.animateItem()
                                     .fillMaxWidth()
                                     .combinedBounceClick(
                                         onClick = {

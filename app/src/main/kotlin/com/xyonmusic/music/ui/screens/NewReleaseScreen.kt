@@ -170,6 +170,7 @@ fun NewReleaseScreen(
                         coroutineScope = coroutineScope,
                         modifier =
                         Modifier
+                            .animateItem()
                             .combinedBounceClick(
                                 onClick = {
                                     navController.navigate(albumRoute(album.id, album.thumbnail))

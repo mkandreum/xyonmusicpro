@@ -121,7 +121,7 @@ ScreenScaffold(
                      isPlaying = isPlaying,
                      fillMaxWidth = true,
                      coroutineScope = coroutineScope,
-                     modifier = Modifier
+                     modifier = Modifier.animateItem()
                          .combinedBounceClick(
                              onClick = {
                                  when (item) {

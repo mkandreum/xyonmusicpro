@@ -350,7 +350,8 @@ class App : Application(), SingletonImageLoader.Factory {
         // Use the startup-seeded value to avoid a synchronous DataStore read on Main.
         val cacheSize = cachedCoilCacheSize ?: 512
         return ImageLoader.Builder(this).apply {
-            crossfade(false)
+            // Network images fade in; Coil skips the fade for memory-cache hits, so returning to a screen stays instant.
+            crossfade(180)
             // Use HARDWARE bitmap configuration for direct zero-copy GPU texture uploads
             allowHardware(true)
             bitmapConfig(Bitmap.Config.HARDWARE)
