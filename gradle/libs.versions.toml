@@ -163,7 +163,7 @@ accompanist-lyrics-ui = { module = "com.mocharealm.accompanist:lyrics-ui", versi
 accompanist-lyrics-core = { module = "com.mocharealm.accompanist:lyrics-core", version.ref = "accompanist-lyrics-core" }
 hig-backdrop = { module = "io.github.kyant0:backdrop", version.ref = "higBackdrop" }
 hig-capsule = { module = "zone.ien.capsule:capsule", version.ref = "higCapsule" }
-kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.12.0" }
+kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version = "1.13.0" }
 kotlinx-atomicfu = { module = "org.jetbrains.kotlinx:atomicfu", version = "0.33.0" }
 jetpackSfSymbols = { module = "com.github.cosmictaserdev-creator.Jetpack_SF_Symbols:sfsymbols", version.ref = "jetpackSfSymbols" }
 
