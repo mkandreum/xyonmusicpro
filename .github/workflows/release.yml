@@ -73,4 +73,7 @@ jobs:
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           APK_PATH=$(find app/build/outputs/apk/universalFoss/release -name '*.apk' | head -n 1)
           mv "$APK_PATH" "xyonmusic-${TAG}.apk"
+          # Create the release when the tag was pushed without one.
+          gh release view "$TAG" --repo "${{ github.repository }}" >/dev/null 2>&1 || \
+            gh release create "$TAG" --repo "${{ github.repository }}" --title "XyonMusic ${TAG#v}" --generate-notes
           gh release upload "$TAG" "xyonmusic-${TAG}.apk" --repo "${{ github.repository }}" --clobber
