@@ -129,7 +129,7 @@ fun ContentAdvancedSettings(
     val (proxyUrl, onProxyUrlChange) = rememberPreference(key = ProxyUrlKey, defaultValue = "")
     val (proxyUsername, onProxyUsernameChange) = rememberPreference(key = ProxyUsernameKey, defaultValue = "")
     val (proxyPassword, onProxyPasswordChange) = rememberPreference(key = ProxyPasswordKey, defaultValue = "")
-    val (ipVersion, onIpVersionChange) = rememberEnumPreference(IpVersionKey, defaultValue = IpVersion.AUTO)
+    val (ipVersion, onIpVersionChange) = rememberEnumPreference(IpVersionKey, defaultValue = IpVersion.IPV4)
 
     val (lyricsProviderOrder, onLyricsProviderOrderChange) = rememberPreference(key = LyricsProviderOrderKey, defaultValue = "")
 

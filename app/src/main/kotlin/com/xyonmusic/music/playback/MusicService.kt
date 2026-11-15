@@ -708,7 +708,7 @@ class MusicService :
         onOutputChanged()
 
         audioQuality = dataStore.get(AudioQualityKey).toEnum(com.xyonmusic.music.constants.AudioQuality.AUTO)
-        ipVersion = dataStore.get(IpVersionKey).toEnum(IpVersion.AUTO)
+        ipVersion = dataStore.get(IpVersionKey).toEnum(IpVersion.IPV4)
         // A saved volume of ~0 would come back silent on every launch with no on-screen way to tell
         // (the system volume does not touch this one), so only an audible value is restored.
         playerVolume = MutableStateFlow(
@@ -1253,7 +1253,7 @@ class MusicService :
 
         scope.launch {
             dataStore.data
-                .map { it[IpVersionKey]?.toEnum(IpVersion.AUTO) ?: IpVersion.AUTO }
+                .map { it[IpVersionKey]?.toEnum(IpVersion.IPV4) ?: IpVersion.IPV4 }
                 .distinctUntilChanged()
                 .collect { newIpVersion ->
                     val oldIpVersion = ipVersion

@@ -68,6 +68,24 @@ object EjsNTransformSolver {
         }
     }
 
+    /**
+     * Deciphers a signatureCipher `s` value with the EJS solver (same AST approach as yt-dlp).
+     * Used when the regex-based extractor no longer finds the signature function in a new player.
+     */
+    suspend fun solveSignature(sig: String): String? = withContext(NonCancellable) {
+        val solver = getOrCreateSolver() ?: return@withContext null
+        if (!solver.sigFunctionAvailable) {
+            Timber.tag(TAG).e("EJS sig-solver not available")
+            return@withContext null
+        }
+        try {
+            solver.solveSig(sig)
+        } catch (e: Exception) {
+            Timber.tag(TAG).e(e, "EJS sig solve failed: ${e.message}")
+            null
+        }
+    }
+
     private suspend fun getOrCreateSolver(): SolverWebView? {
         solverWebView?.let { return it }
 
@@ -107,6 +125,11 @@ object EjsNTransformSolver {
     ) {
         private val webView = WebView(context)
         private var nContinuation: Continuation<String>? = null
+        private var sigContinuation: Continuation<String>? = null
+
+        @Volatile
+        var sigFunctionAvailable: Boolean = false
+            private set
 
         @Volatile
         var nFunctionAvailable: Boolean = false
@@ -122,6 +145,10 @@ object EjsNTransformSolver {
             settings.blockNetworkLoads = true
 
             webView.addJavascriptInterface(this, "EjsBridge")
+            // The solver runs player code that may try to navigate; the page must never leave.
+            webView.webViewClient = object : android.webkit.WebViewClient() {
+                override fun shouldOverrideUrlLoading(view: WebView?, request: android.webkit.WebResourceRequest?) = true
+            }
 
             webView.webChromeClient = object : WebChromeClient() {
                 override fun onConsoleMessage(m: ConsoleMessage): Boolean {
@@ -157,6 +184,7 @@ object EjsNTransformSolver {
 <script src="yt.solver.core.js"></script>
 <script>
 var _nSolver = null;
+var _sigSolver = null;
 
 function initSolver() {
     try {
@@ -189,6 +217,8 @@ function initSolver() {
                 (new Function('_result', result.preprocessed_player))(resultObj);
 
                 _nSolver = resultObj.n;
+                _sigSolver = resultObj.sig;
+                EjsBridge.onSigReady((typeof _sigSolver === 'function').toString());
                 EjsBridge.onSolverReady((typeof _nSolver === 'function').toString());
             } catch(e) {
                 EjsBridge.onSolverError(e.toString() + '\n' + (e.stack || ''));
@@ -219,6 +249,17 @@ function transformN(nValue) {
         EjsBridge.onNError(e.toString() + '\n' + (e.stack || ''));
     }
 }
+
+function solveSig(s) {
+    try {
+        if (!_sigSolver) { EjsBridge.onSigError('Sig solver not available'); return; }
+        var result = _sigSolver(s);
+        if (result === undefined || result === null) { EjsBridge.onSigError('Sig solver returned null'); return; }
+        EjsBridge.onSigResult(String(result));
+    } catch(e) {
+        EjsBridge.onSigError(e.toString());
+    }
+}
 </script>
 </head><body onload="initSolver()"></body></html>"""
 
@@ -231,6 +272,35 @@ function transformN(nValue) {
         @JavascriptInterface
         fun onLog(message: String) {
             Timber.tag(TAG).d(message)
+        }
+
+        @JavascriptInterface
+        fun onSigReady(available: String) {
+            sigFunctionAvailable = available == "true"
+            Timber.tag(TAG).d("EJS solver ready: sig=$sigFunctionAvailable")
+        }
+
+        suspend fun solveSig(sig: String): String {
+            if (!sigFunctionAvailable) throw SabrException("EJS sig solver not available")
+            return withContext(Dispatchers.Main) {
+                suspendCancellableCoroutine { cont ->
+                    sigContinuation = cont
+                    webView.evaluateJavascript("solveSig('${escapeJsString(sig)}')", null)
+                }
+            }
+        }
+
+        @JavascriptInterface
+        fun onSigResult(result: String) {
+            sigContinuation?.resume(result)
+            sigContinuation = null
+        }
+
+        @JavascriptInterface
+        fun onSigError(error: String) {
+            Timber.tag(TAG).e("Sig solve error: $error")
+            sigContinuation?.resumeWithException(SabrException("EJS sig solve failed: $error"))
+            sigContinuation = null
         }
 
         @JavascriptInterface

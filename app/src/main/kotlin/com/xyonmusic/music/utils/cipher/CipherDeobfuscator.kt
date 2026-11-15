@@ -49,10 +49,11 @@ object CipherDeobfuscator {
 
         Timber.tag(TAG).d("Deobfuscating cipher for $videoId: sig=${obfuscatedSig.take(20)}..., sp=$sigParam")
 
+        // Regex extraction breaks whenever YouTube reshapes its player; the EJS (AST) solver does not.
         val webView = getOrCreateWebView(forceRefresh = isRetry)
+        val deobfuscatedSig = webView?.let { runCatching { it.deobfuscateSignature(obfuscatedSig) }.getOrNull() }
+            ?: com.xyonmusic.music.utils.sabr.EjsNTransformSolver.solveSignature(obfuscatedSig)
             ?: return null
-
-        val deobfuscatedSig = webView.deobfuscateSignature(obfuscatedSig)
 
         val separator = if ("?" in baseUrl) "&" else "?"
         val finalUrl = "$baseUrl${separator}${sigParam}=${Uri.encode(deobfuscatedSig)}"

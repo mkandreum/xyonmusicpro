@@ -187,6 +187,10 @@ fun LiquidArcSlider(
                 .pointerInput(mirrored, segments, w, h) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
+                        // Only the band around the curve belongs to the slider: a tap on what sits
+                        // inside the curve (the skip button) must not wake the lens.
+                        val band = thickness.toPx() * 1.6f
+                        if (kotlin.math.abs((down.position - Offset(cx, cy)).getDistance() - r) > band) return@awaitEachGesture
                         scope.launch { press.animateTo(1f, LiquidSprings.press) }
                         var held = false
                         var moved = false

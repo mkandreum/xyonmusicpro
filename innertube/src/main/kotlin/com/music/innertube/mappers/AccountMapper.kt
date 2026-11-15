@@ -18,12 +18,15 @@ internal object AccountMapper {
     suspend fun visitorData(innerTube: InnerTube): Result<String> = runCatching {
         val response = innerTube.getSwJsData().bodyAsText()
         val root = Json.parseToJsonElement(response.substring(5)).jsonArray
-        val candidates = root[0].jsonArray[2].jsonArray
-        val visitorData = candidates.first { value ->
-            val candidate = (value as? JsonPrimitive)?.contentOrNull ?: return@first false
-            VISITOR_DATA_REGEX.containsMatchIn(candidate)
-        }
-        visitorData.jsonPrimitive.content
+        // YouTube moves the value between nesting levels from time to time; search the whole tree.
+        findVisitorData(root[0].jsonArray[2])
+            ?: throw IllegalStateException("visitorData not found in sw.js_data")
+    }
+
+    private fun findVisitorData(element: kotlinx.serialization.json.JsonElement): String? = when (element) {
+        is JsonPrimitive -> element.contentOrNull?.takeIf { VISITOR_DATA_REGEX.containsMatchIn(it) }
+        is kotlinx.serialization.json.JsonArray -> element.firstNotNullOfOrNull(::findVisitorData)
+        else -> null
     }
 
     suspend fun accountInfo(innerTube: InnerTube): Result<AccountInfo> = runCatching {

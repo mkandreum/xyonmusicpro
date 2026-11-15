@@ -331,7 +331,7 @@ class App : Application(), SingletonImageLoader.Factory {
                 .map { it[IpVersionKey] }
                 .distinctUntilChanged()
                 .collect { ipVersion ->
-                    YouTube.ipVersion = ipVersion?.toEnum(defaultValue = IpVersion.AUTO) ?: IpVersion.AUTO
+                    YouTube.ipVersion = ipVersion?.toEnum(defaultValue = IpVersion.IPV4) ?: IpVersion.IPV4
                 }
         }
 

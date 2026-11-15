@@ -791,7 +791,10 @@ object YTPlayerUtils {
         }
 
         var poToken: PoTokenResult? = null
-        val sessionId = if (isLoggedIn) YouTube.dataSyncId else YouTube.visitorData
+        // On a first launch the stored visitorData may not have arrived yet; web clients need it for a PO token.
+        val sessionId = if (isLoggedIn) YouTube.dataSyncId else (
+            YouTube.visitorData ?: YouTube.visitorData().getOrNull()?.also { YouTube.visitorData = it }
+        )
         if (MAIN_CLIENT.useWebPoTokens && sessionId != null) {
             Timber.tag(logTag).d("Generating PoToken for MAIN_CLIENT with sessionId")
             try {
@@ -1052,6 +1055,16 @@ object YTPlayerUtils {
                 PlaybackLogManager.log(PlaybackLogLevel.WARNING, "Client failed: ${client.clientName}", "$status: $reason")
                 
             }
+        }
+
+        // Every client ran out without a validated stream (late clients often fail outright on a
+        // bot-flagged IP): fall back to the first stream that at least started instead of erroring.
+        if (partialUrl != null && (format == null || streamUrl == null || streamPlayerResponse?.playabilityStatus?.status != "OK")) {
+            Timber.tag(logTag).d("No client validated; using the stream that at least starts")
+            format = partialFormat
+            streamUrl = partialUrl
+            streamExpiresInSeconds = partialExpires
+            streamPlayerResponse = partialResponse
         }
 
         if (streamPlayerResponse == null) {

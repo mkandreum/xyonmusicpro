@@ -326,6 +326,15 @@ class PoTokenWebView private constructor(
 
         private val httpClient = OkHttpClient.Builder()
             .proxy(YouTube.proxy)
+            .dns { host ->
+                // Same address family as playback: a token minted over IPv6 does not match IPv4 streams.
+                val all = okhttp3.Dns.SYSTEM.lookup(host)
+                when (YouTube.ipVersion) {
+                    com.music.innertube.models.IpVersion.IPV6 -> all.filter { it is java.net.Inet6Address }.ifEmpty { all }
+                    com.music.innertube.models.IpVersion.AUTO -> all
+                    else -> all.filter { it is java.net.Inet4Address }.ifEmpty { all }
+                }
+            }
             .build()
 
         suspend fun getNewPoTokenGenerator(context: Context): PoTokenWebView {
