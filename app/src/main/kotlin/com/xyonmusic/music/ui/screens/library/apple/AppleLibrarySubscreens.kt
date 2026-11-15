@@ -987,8 +987,13 @@ internal fun songMenu(song: Song, navController: NavController): SongMenuEntries
 
     // A file on the device has no YouTube video to download or link to.
     val isLocal = song.song.isLocal
+    val songDownload by remember(song.id) { downloadUtil.getDownload(song.id) }.collectAsStateWithLifecycle(initialValue = null)
+    val isOnDevice = songDownload?.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED || (songDownload == null && song.song.isDownloaded)
     val quick = listOfNotNull(
-        if (isLocal) null else IosMenuItem(stringResource(R.string.action_download), icon = glyph(sf("SFArrowDownToLine"))) {
+        // Download, or remove it when the song is already on the device.
+        if (isLocal) null else if (isOnDevice) IosMenuItem(stringResource(R.string.remove_download), icon = glyph(sf("SFTrash"))) {
+            androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(context, com.xyonmusic.music.playback.ExoDownloadService::class.java, song.id, false)
+        } else IosMenuItem(stringResource(R.string.action_download), icon = glyph(sf("SFArrowDownToLine"))) {
             downloadSongs(context, listOf(DownloadTarget(song.id, song.song.title)), downloadUtil.downloads.value)
         },
         IosMenuItem(

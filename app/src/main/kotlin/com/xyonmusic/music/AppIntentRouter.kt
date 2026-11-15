@@ -81,7 +81,7 @@ internal class AppIntentRouter(
         if (!uri.scheme.equals("xyonmusic", ignoreCase = true) || !uri.host.equals("party", ignoreCase = true)) return false
         val code = cleanId(uri.pathSegments.firstOrNull(), min = 4, max = 16) ?: return true
         partyManagerProvider.get().offerInvite(code, uri.getQueryParameter("server"))
-        navController.navigate("listen_together/party") { launchSingleTop = true }
+        // Listen Together was removed: the invite is noted but there is no screen to open.
         return true
     }
 

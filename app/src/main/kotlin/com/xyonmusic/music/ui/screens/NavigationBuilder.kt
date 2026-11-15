@@ -181,6 +181,11 @@ fun NavGraphBuilder.navigationBuilder(
         StatsScreen(navController)
     }
 
+    // Stats (sparkles button) and the Home "your year is ready" card open this.
+    sharedComposable("wrapped") {
+        WrappedScreen(navController)
+    }
+
     sharedComposable("mood_and_genres") {
         MoodAndGenresScreen(navController, scrollBehavior)
     }

@@ -195,7 +195,7 @@ fun LocalMusicScreen(
                                     onClick = { sortMode = LocalSortMode.DURATION; showSortMenu = false },
                                 )
                                 DropdownMenuItem(
-                                    text = { Text("Recently added") },
+                                    text = { Text("Añadidas recientemente") },
                                     onClick = { sortMode = LocalSortMode.RECENT; showSortMenu = false },
                                 )
                             }
@@ -234,7 +234,7 @@ fun LocalMusicScreen(
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("Search local music") },
+                        placeholder = { Text("Buscar en la música del móvil") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -323,7 +323,7 @@ fun LocalMusicScreen(
                     ) {
                         SymbolIcon(bounceOnEnter = true, symbol = sf("SFPlayFill"), contentDescription = null, size = 18.dp)
                         Spacer(Modifier.width(8.dp))
-                        Text("Play All")
+                        Text("Reproducir todo")
                     }
                     Button(
                         onClick = {

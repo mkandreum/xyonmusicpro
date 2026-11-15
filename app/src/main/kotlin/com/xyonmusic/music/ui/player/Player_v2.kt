@@ -858,7 +858,7 @@ private fun PlayerV2Content(
                 )
                 val partyViewModel: com.xyonmusic.music.viewmodels.JamViewModel = androidx.hilt.navigation.compose.hiltViewModel()
                 val party by partyViewModel.session.collectAsStateWithLifecycle()
-                party?.let { PartyChip(it.code, it.members.size, adaptivePrimary) { state.collapseSoft(); navController.navigate("listen_together/party") } }
+                party?.let { PartyChip(it.code, it.members.size, adaptivePrimary) { state.collapseSoft() } }
                 if (showVideoSwitch) {
                     SongVideoModeControl(watchVideo, adaptivePrimary) { selected ->
                         if (selected && watchVideo && videoLookup is com.xyonmusic.music.playback.VideoStreamLookup.Unavailable) {

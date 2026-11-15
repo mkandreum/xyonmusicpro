@@ -55,7 +55,7 @@ fun SuggestionRegionSheet(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = "Choose Suggestions Region",
+                text = "Región de las sugerencias",
                 style = AppTheme.typography.labelLarge
             )
             
@@ -83,7 +83,7 @@ fun SuggestionRegionSheet(
                 item {
                     val isSelected = currentRegionSlug == "system"
                     RegionListItem(
-                        headlineContent = { Text("System Default") },
+                        headlineContent = { Text("La del sistema") },
                         selected = isSelected,
                         items = 1,
                         index = 0,

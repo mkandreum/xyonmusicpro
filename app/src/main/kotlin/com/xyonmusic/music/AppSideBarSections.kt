@@ -111,7 +111,8 @@ fun rememberSideBarSections(
                             )
                         )
                     }
-                    if (listenTogetherInTopBar) {
+                    // Listen Together was removed; its route no longer exists.
+                    if (false && listenTogetherInTopBar) {
                         add(
                             SideBarLink(
                                 label = context.getString(R.string.together),

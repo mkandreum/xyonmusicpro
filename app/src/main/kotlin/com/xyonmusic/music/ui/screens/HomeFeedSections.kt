@@ -215,7 +215,7 @@ internal fun LazyListScope.speedDialSection(
         val entries = items.map { it.toShelfEntry(deps) } + ShelfEntry(
             id = "speed_dial_randomize",
             thumbnailUrl = null,
-            title = "Surprise me",
+            title = "Sorpréndeme",
             subtitle = if (isRandomizing) "Picking..." else "Play something at random",
             onClick = {
                 if (isRandomizing) {

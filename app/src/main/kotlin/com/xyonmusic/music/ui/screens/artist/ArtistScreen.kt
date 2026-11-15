@@ -1031,7 +1031,7 @@ fun ArtistScreen(
                                         }
                                         Column(Modifier.weight(1f)) {
                                             ArtistSectionHeader(
-                                                title = "Top Songs",
+                                                title = "Canciones más escuchadas",
                                                 compact = true,
                                                 modifier = Modifier.artistTitleChrome(),
                                                 onClick = section.moreEndpoint?.let {

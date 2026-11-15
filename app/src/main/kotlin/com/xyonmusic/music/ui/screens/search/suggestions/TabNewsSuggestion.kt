@@ -229,7 +229,7 @@ fun SuggestionsTabContent(
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         Text(
-                            text = "Data from Apple Music",
+                            text = "Datos de Apple Music",
                             style = AppTheme.typography.labelSmall,
                             color = AppTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
                         )
@@ -294,7 +294,7 @@ fun TrendingAppleMusicSection(
                         ) {
                             SymbolIcon(symbol = sf("SFAntennaRadiowavesLeftAndRight"), contentDescription = null, size = 24.dp, tint = AppTheme.colorScheme.primary)
                             Spacer(Modifier.width(12.dp))
-                            Text("View more on Apple Music", style = AppTheme.typography.titleMedium, color = AppTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+                            Text("Ver más en Apple Music", style = AppTheme.typography.titleMedium, color = AppTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
                         }
                     } else if (i < displayTracks.size) {
                         val track = displayTracks[i]
@@ -408,7 +408,7 @@ fun TopArtistsSection(
 ) {
     if (artists.isEmpty()) return
     Column(modifier = Modifier.fillMaxWidth()) {
-        NavigationTitle(title = "Trending Artists")
+        NavigationTitle(title = "Artistas en tendencia")
         LazyRow(
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -455,7 +455,7 @@ fun TrendingAlbumsSection(
     if (albums.isEmpty()) return
     Column(modifier = Modifier.fillMaxWidth()) {
         NavigationTitle(
-            title = "Trending Albums",
+            title = "Álbumes en tendencia",
             onClick = onMoreClick,
         )
         LazyRow(
@@ -539,7 +539,7 @@ fun TrendingVideosSection(
 
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp)) {
         NavigationTitle(
-            title = "Trending Music Videos",
+            title = "Vídeos musicales en tendencia",
             onClick = onMoreClick,
         )
 

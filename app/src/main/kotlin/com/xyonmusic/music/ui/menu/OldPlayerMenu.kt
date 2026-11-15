@@ -517,7 +517,7 @@ fun OldPlayerMenu(
                             icon = {
                                 SymbolIcon(symbol = sf("person.2.fill"), contentDescription = null, size = 24.dp)
                             },
-                            onClick = { onDismiss(); navController.navigate("listen_together/party") }
+                            onClick = { onDismiss() }
                         )
                     )
                     if (isListenTogetherGuest) {
