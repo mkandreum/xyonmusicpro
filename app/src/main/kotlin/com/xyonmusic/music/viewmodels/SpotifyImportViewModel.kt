@@ -77,6 +77,8 @@ data class SpotifyImportUiState(
     val homeShelves: List<SpotifyHomeShelf> = emptyList(),
     val isHomeFeedLoading: Boolean = false,
     val homeFeedErrorMessage: String? = null,
+    /** The Spotify home item whose first track is being matched for playback. */
+    val resolvingHomeUri: String? = null,
 )
 
 data class SpotifyImportProgress(
@@ -86,6 +88,8 @@ data class SpotifyImportProgress(
     val percent: Float,
     val isFinished: Boolean = false
 )
+
+private const val HomePlayLimit = 80
 
 private data class PlaylistImportData(
     val title: String,
@@ -462,6 +466,80 @@ class SpotifyImportViewModel @Inject constructor(
         )
     }
 
+    /** Best YouTube match for one Spotify track, or null when nothing plausible turns up. */
+    private suspend fun matchSong(song: Song): MediaMetadata? {
+        val artist = song.artists.firstOrNull()?.name.orEmpty()
+        val fullQuery = if (artist.isEmpty()) song.title else "$artist ${song.title}"
+
+        suspend fun candidates(query: String, filter: SearchFilter?): List<SongItem> {
+            val result = if (filter != null) {
+                YouTube.search(query = query, filter = filter).getOrNull()
+            } else {
+                YouTube.search(query = query, filter = SearchFilter("")).getOrNull()
+            }
+            return result?.items
+                ?.filterIsInstance<SongItem>()
+                ?.distinctBy { it.id }
+                .orEmpty()
+        }
+
+        var found = candidates(fullQuery, SearchFilter.FILTER_SONG)
+        if (found.isEmpty()) found = candidates(song.title, SearchFilter.FILTER_SONG)
+        if (found.isEmpty()) found = candidates(fullQuery, null)
+
+        val bestMatch = found.maxByOrNull { candidate ->
+            SpotifyMapper.matchScore(
+                spotifyTitle = song.title,
+                spotifyArtist = song.artists.joinToString(" ") { it.name },
+                spotifyDurationMs = song.song.duration * 1000,
+                candidateTitle = candidate.title,
+                candidateArtist = candidate.artists.joinToString(" ") { it.name },
+                candidateDurationSec = candidate.duration,
+            )
+        }
+        return bestMatch?.toMediaMetadata()
+    }
+
+    private var homePlayJob: Job? = null
+
+    /**
+     * Plays a Spotify home playlist through YouTube: the first track that matches starts at once
+     * ([onFirst]), the rest is matched in order in small batches and appended ([onMore]).
+     */
+    fun playHomePlaylist(
+        item: SpotifyHomeItem,
+        onFirst: (MediaMetadata) -> Unit,
+        onMore: (List<MediaMetadata>) -> Unit,
+    ) {
+        val playlistId = item.playlistId ?: return
+        homePlayJob?.cancel()
+        homePlayJob = viewModelScope.launch(Dispatchers.IO) {
+            _uiState.update { it.copy(resolvingHomeUri = item.uri) }
+            try {
+                ensureAuthenticated()
+                val songs = fetchPlaylistTracks(playlistId).take(HomePlayLimit)
+                var next = 0
+                var started = false
+                while (next < songs.size && !started) {
+                    val first = runCatching { matchSong(songs[next++]) }.getOrNull()
+                    if (first != null) {
+                        withContext(Dispatchers.Main) { onFirst(first) }
+                        started = true
+                    }
+                }
+                _uiState.update { it.copy(resolvingHomeUri = null) }
+                for (chunk in songs.drop(next).chunked(6)) {
+                    val matched = coroutineScope { chunk.map { async { runCatching { matchSong(it) }.getOrNull() } }.awaitAll() }.filterNotNull()
+                    if (matched.isNotEmpty()) withContext(Dispatchers.Main) { onMore(matched) }
+                }
+            } catch (e: Exception) {
+                if (e !is kotlinx.coroutines.CancellationException) reportException(e)
+            } finally {
+                _uiState.update { it.copy(resolvingHomeUri = null) }
+            }
+        }
+    }
+
     private suspend fun matchSongs(
         importData: PlaylistImportData,
         totalSongs: Int,
@@ -474,36 +552,7 @@ class SpotifyImportViewModel @Inject constructor(
                 semaphore.withPermit {
                     var matchedSong: MediaMetadata? = null
                     try {
-                        val artist = song.artists.firstOrNull()?.name.orEmpty()
-                        val fullQuery = if (artist.isEmpty()) song.title else "$artist ${song.title}"
-
-                        suspend fun candidates(query: String, filter: SearchFilter?): List<SongItem> {
-                            val result = if (filter != null) {
-                                YouTube.search(query = query, filter = filter).getOrNull()
-                            } else {
-                                YouTube.search(query = query, filter = SearchFilter("")).getOrNull()
-                            }
-                            return result?.items
-                                ?.filterIsInstance<SongItem>()
-                                ?.distinctBy { it.id }
-                                .orEmpty()
-                        }
-
-                        var found = candidates(fullQuery, SearchFilter.FILTER_SONG)
-                        if (found.isEmpty()) found = candidates(song.title, SearchFilter.FILTER_SONG)
-                        if (found.isEmpty()) found = candidates(fullQuery, null)
-
-                        val bestMatch = found.maxByOrNull { candidate ->
-                            SpotifyMapper.matchScore(
-                                spotifyTitle = song.title,
-                                spotifyArtist = song.artists.joinToString(" ") { it.name },
-                                spotifyDurationMs = song.song.duration * 1000,
-                                candidateTitle = candidate.title,
-                                candidateArtist = candidate.artists.joinToString(" ") { it.name },
-                                candidateDurationSec = candidate.duration,
-                            )
-                        }
-                        matchedSong = bestMatch?.toMediaMetadata()
+                        matchedSong = matchSong(song)
                     } catch (e: Exception) {
                         reportException(e)
                     } finally {

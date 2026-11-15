@@ -473,6 +473,22 @@ fun HomeScreen(
     )
 
     val chartsViewModel: ChartsViewModel = hiltViewModel()
+    // Spotify, when connected: its own home shelves, played through YouTube.
+    val spotifyViewModel: com.xyonmusic.music.viewmodels.SpotifyImportViewModel = hiltViewModel()
+    val spotifyState by spotifyViewModel.uiState.collectAsStateWithLifecycle()
+    val playSpotifyItem: (com.music.spotify.SpotifyHomeItem) -> Unit = remember(spotifyViewModel, playerConnection) {
+        { item ->
+            spotifyViewModel.playHomePlaylist(
+                item = item,
+                onFirst = { first ->
+                    playerConnection.playQueue(
+                        com.xyonmusic.music.playback.queues.ListQueue(title = item.title, items = listOf(first.toMediaItem())),
+                    )
+                },
+                onMore = { more -> playerConnection.addToQueue(more.map { it.toMediaItem() }) },
+            )
+        }
+    }
     val chartsPage by chartsViewModel.chartsPage.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         if (chartsPage == null) chartsViewModel.loadCharts()
@@ -679,6 +695,14 @@ fun HomeScreen(
                             trending = if (topPicks.isNotEmpty()) trending else emptyList(),
                             trendingTitle = trendingTitle,
                         )
+                        if (spotifyState.isAuthenticated) {
+                            spotifyHomeSection(
+                                deps = deps,
+                                shelves = spotifyState.homeShelves,
+                                resolvingUri = spotifyState.resolvingHomeUri,
+                                onPlay = playSpotifyItem,
+                            )
+                        }
                         homeSectionsContent(
                             sections = homeSections,
                             deps = deps,
