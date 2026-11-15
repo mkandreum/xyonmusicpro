@@ -142,13 +142,15 @@ fun NavGraphBuilder.navigationBuilder(
         val pureBlack = remember(pureBlackEnabled, useDarkTheme) {
             pureBlackEnabled && useDarkTheme
         }
-        SearchScreen(
-            navController = navController,
-            pureBlack = pureBlack,
-            accountImageUrl = accountImageUrl,
-            accountName = accountName,
-            onAccountClick = onAccountClick,
-        )
+        androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().tabDepthBlur(this@composable)) {
+            SearchScreen(
+                navController = navController,
+                pureBlack = pureBlack,
+                accountImageUrl = accountImageUrl,
+                accountName = accountName,
+                onAccountClick = onAccountClick,
+            )
+        }
     }
 
     sharedComposable(Screens.LibSongs.route) {
@@ -724,15 +726,16 @@ private fun NavGraphBuilder.sharedComposable(
                 slideInHorizontally(tween(PageEnterMillis, easing = FastOutSlowInEasing)) { it } +
                     fadeIn(tween(PageEnterMillis, easing = FastOutSlowInEasing))
             } else {
-                // The new tab fades in over the old one, which stays opaque underneath: no gap
-                // where only the window background shows (flicker), no scale (cropped edges).
-                fadeIn(tween(TabFadeMillis, easing = FastOutSlowInEasing))
+                // Tab to tab: rise into focus over the old page (see TabTransitions).
+                if (with(TabTransitions) { isTabSwitch() }) TabTransitions.enter()
+                else fadeIn(tween(TabFadeMillis, easing = FastOutSlowInEasing))
             }
         },
         exitTransition = {
             val nextCollection = targetState.destination.route?.let { it.startsWith("album/") || it.contains("playlist/") } == true
             if (nextCollection) fadeOut(tween(PageExitMillis), targetAlpha = if (com.xyonmusic.music.ui.utils.isLibraryArtworkMorph()) 0f else .999f)
             // Switching tabs: stay opaque under the incoming page until it has faded in.
+            else if (with(TabTransitions) { isTabSwitch() }) TabTransitions.exitUnder()
             else if (targetState.destination.route in Screens.MainRoutes) fadeOut(tween(TabFadeMillis), targetAlpha = .999f)
             // The page underneath dims while the next one arrives (no scale: it would show its edges).
             else fadeOut(tween(PageExitMillis), targetAlpha = 0.7f)
@@ -741,6 +744,7 @@ private fun NavGraphBuilder.sharedComposable(
             val leavingCollection = initialState.destination.route?.let { it.startsWith("album/") || it.contains("playlist/") } == true
             if (leavingCollection) fadeIn(tween(PageEnterMillis), initialAlpha = if (com.xyonmusic.music.ui.utils.isLibraryArtworkMorph()) 0f else .999f)
             // Back to a tab from another tab: already opaque underneath the page that fades away.
+            else if (with(TabTransitions) { isTabSwitch() }) TabTransitions.enterUnder()
             else if (initialState.destination.route in Screens.MainRoutes) fadeIn(tween(TabFadeMillis), initialAlpha = .999f)
             // Coming back from a detail page: the page underneath brightens back.
             else fadeIn(tween(PageEnterMillis), initialAlpha = 0.7f)
@@ -754,8 +758,9 @@ private fun NavGraphBuilder.sharedComposable(
                 slideOutHorizontally(tween(PageExitMillis, easing = FastOutSlowInEasing)) { it / 4 } +
                     fadeOut(tween(PageExitMillis, easing = FastOutSlowInEasing))
             } else {
-                // On top while popping: fade away over the opaque page underneath.
-                fadeOut(tween(TabFadeMillis, easing = FastOutSlowInEasing))
+                // On top while popping: fade away over the page underneath.
+                if (with(TabTransitions) { isTabSwitch() }) TabTransitions.exitOver()
+                else fadeOut(tween(TabFadeMillis, easing = FastOutSlowInEasing))
             }
         },
     ) { entry ->
@@ -773,6 +778,11 @@ private fun NavGraphBuilder.sharedComposable(
                         this.shape = shape
                     },
                 ) { com.xyonmusic.music.ui.theme.ForcedDarkScope(darkRoute) { content(entry) } }
+            } else if (route in Screens.MainRoutes) {
+                // Tab pages blur out of / into focus as they leave and arrive.
+                androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().tabDepthBlur(this@composable)) {
+                    com.xyonmusic.music.ui.theme.ForcedDarkScope(darkRoute) { content(entry) }
+                }
             } else com.xyonmusic.music.ui.theme.ForcedDarkScope(darkRoute) { content(entry) }
         }
     }

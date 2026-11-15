@@ -57,7 +57,7 @@ fun AppNavHost(
         // screen moves a third of that distance and dims. Both use the
         // same curve to keep the parallax in sync.
         enterTransition = {
-            if (isTabSwitch()) fadeIn(androidx.compose.animation.core.tween(TabSwitchMillis)) else slideInHorizontally(if (isMorphRoute(targetState.destination.route)) Motion.artwork() else Motion.push()) { it }
+            if (isTabSwitch()) com.xyonmusic.music.ui.screens.TabTransitions.enter() else slideInHorizontally(if (isMorphRoute(targetState.destination.route)) Motion.artwork() else Motion.push()) { it }
         },
         exitTransition = {
             // A destination that grows out of one of this
@@ -65,7 +65,7 @@ fun AppNavHost(
             // the tile is the thing the next screen is coming
             // out of, so this one holds still and dims.
             if (isTabSwitch()) {
-                fadeOut(androidx.compose.animation.core.tween(TabSwitchMillis), targetAlpha = .999f)
+                com.xyonmusic.music.ui.screens.TabTransitions.exitUnder()
             } else if (isMorphRoute(targetState.destination.route)) {
                 fadeOut(Motion.artwork(), targetAlpha = 0.7f)
             } else {
@@ -78,7 +78,7 @@ fun AppNavHost(
         // so back mirrors the push. The incoming screen stays opaque to avoid a transparent overlap.
         popEnterTransition = {
             if (isTabSwitch()) {
-                fadeIn(androidx.compose.animation.core.tween(TabSwitchMillis), initialAlpha = .999f)
+                com.xyonmusic.music.ui.screens.TabTransitions.enterUnder()
             } else if (isMorphRoute(initialState.destination.route)) {
                 EnterTransition.None
             } else {
@@ -87,7 +87,7 @@ fun AppNavHost(
         },
         popExitTransition = {
             if (isTabSwitch()) {
-                fadeOut(androidx.compose.animation.core.tween(TabSwitchMillis))
+                com.xyonmusic.music.ui.screens.TabTransitions.exitOver()
             } else if (isMorphRoute(initialState.destination.route)) {
                 fadeOut(Motion.artwork())
             } else {
@@ -108,7 +108,6 @@ fun AppNavHost(
     }
 }
 
-private const val TabSwitchMillis = 200
 
 /** Both ends are bar tabs: tabs crossfade in place instead of pushing sideways. */
 private fun androidx.compose.animation.AnimatedContentTransitionScope<androidx.navigation.NavBackStackEntry>.isTabSwitch(): Boolean =
