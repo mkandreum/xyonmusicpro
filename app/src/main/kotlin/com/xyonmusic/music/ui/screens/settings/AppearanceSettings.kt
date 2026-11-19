@@ -356,12 +356,6 @@ fun AppearanceSettings(
                     title = { Text(stringResource(R.string.presets)) },
                     description = { Text(stringResource(R.string.presets_desc)) },
                     onClick = { navController.navigate("settings/appearance/presets") }
-                ),
-                IosSettingsItem(
-                    icon = painterResource(R.drawable.edit),
-                    title = { Text(stringResource(R.string.diy)) },
-                    description = { Text(stringResource(R.string.diy_desc)) },
-                    onClick = { navController.navigate("settings/appearance/diy") }
                 )
             )
         )
@@ -448,18 +442,6 @@ fun AppearanceSettings(
         IosSettingsGroup(
             title = "Reproductor y Canvas",
             items = listOfNotNull(
-                IosSettingsItem(
-                    icon = painterResource(R.drawable.tune),
-                    title = { Text(stringResource(R.string.player_icons)) },
-                    description = { Text(stringResource(R.string.player_icons_desc)) },
-                    onClick = { navController.navigate("settings/appearance/playericons") }
-                ),
-                IosSettingsItem(
-                    icon = painterResource(R.drawable.gradient),
-                    title = { Text(stringResource(R.string.player_theme)) },
-                    description = { Text(stringResource(R.string.player_theme_desc)) },
-                    onClick = { navController.navigate("settings/appearance/playertheme") }
-                ),
                 IosSettingsItem(
                     icon = painterResource(R.drawable.crop),
                     title = { Text(stringResource(R.string.crop_album_art)) },

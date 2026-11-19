@@ -68,12 +68,9 @@ import com.xyonmusic.music.ui.screens.settings.AboutScreen
 import com.xyonmusic.music.ui.screens.settings.AppearanceSettings
 import com.xyonmusic.music.ui.screens.settings.CanvasSelection
 import com.xyonmusic.music.ui.screens.settings.AppIconScreen
-import com.xyonmusic.music.ui.screens.settings.diy.DiyEditorScreen
-import com.xyonmusic.music.ui.screens.settings.diy.PlayerIconsScreen
 import com.xyonmusic.music.ui.screens.settings.diy.PresetsScreen
 import com.xyonmusic.music.ui.screens.settings.FontSelectionScreen
 import com.xyonmusic.music.ui.screens.settings.GlassEffectSettings
-import com.xyonmusic.music.ui.screens.settings.PlayerThemeScreen
 import com.xyonmusic.music.ui.screens.settings.BackupAndRestore
 import com.xyonmusic.music.ui.screens.settings.CrashLogsSettingsScreen
 import com.xyonmusic.music.ui.screens.settings.SpotifyScreen
@@ -479,21 +476,12 @@ fun NavGraphBuilder.navigationBuilder(
         PresetsScreen(navController, scrollBehavior)
     }
 
-    sharedComposable("settings/appearance/playericons") {
-        PlayerIconsScreen(navController, scrollBehavior)
-    }
 
-    sharedComposable("settings/appearance/diy") {
-        DiyEditorScreen(navController)
-    }
 
     sharedComposable("settings/appearance/canvas") {
         CanvasSelection(navController, scrollBehavior)
     }
 
-    sharedComposable("settings/appearance/playertheme") {
-        PlayerThemeScreen(navController, scrollBehavior)
-    }
 
     sharedComposable("settings/appearance/liquidglass") {
         GlassEffectSettings(navController, scrollBehavior)

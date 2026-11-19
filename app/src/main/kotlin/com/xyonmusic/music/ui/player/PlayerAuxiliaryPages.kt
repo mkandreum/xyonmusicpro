@@ -39,7 +39,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.navigation.NavController
 import com.xyonmusic.music.constants.ReduceDynamicBlurKey
 import com.xyonmusic.music.ui.component.BottomSheetState
-import com.xyonmusic.music.ui.player.customize.DiyOrientation
 import com.xyonmusic.music.ui.utils.Motion
 import com.xyonmusic.music.utils.rememberPreference
 
@@ -103,28 +102,6 @@ internal fun auxiliaryArtworkTransitionRunning(): Boolean =
     LocalAuxiliaryVisibilityScope.current?.transition?.let {
         it.currentState != it.targetState
     } == true
-
-/**
- * The classic player's queue and lyrics pages live inside the classic layout, so its background and
- * controls stay put. One shared-transition scope spans the whole layout, which lets the title and
- * artist in the controls morph into the page header.
- */
-@OptIn(ExperimentalSharedTransitionApi::class)
-@Composable
-internal fun PlayerAuxiliaryPages(
-    pages: PlayerAuxiliaryPageState,
-    state: BottomSheetState,
-    navController: NavController,
-    forcedOrientation: DiyOrientation?,
-    isPreviewOnly: Boolean,
-    coverContent: @Composable () -> Unit,
-) {
-    SharedTransitionLayout(Modifier.fillMaxSize()) {
-        CompositionLocalProvider(LocalAuxiliaryArtworkScope provides this) {
-            coverContent()
-        }
-    }
-}
 
 /**
  * The slot where the classic cover sits. Queue and lyrics use a fading artwork copy in the page

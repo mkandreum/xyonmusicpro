@@ -48,7 +48,6 @@ import com.xyonmusic.music.ui.ios.foundation.iosRowPress
 /** What a settings row does when tapped. */
 sealed interface SettingsAction {
     data class Route(val route: String) : SettingsAction
-    data object PlayerDesign : SettingsAction
     data object LyricsStyle : SettingsAction
     data object AppleMusicImport : SettingsAction
 }
@@ -88,12 +87,8 @@ object SettingsHubs {
             SettingsLinkGroup(
                 "Reproductor",
                 listOf(
-                    SettingsLink("Diseño del reproductor", R.drawable.play, { systemPink }, SettingsAction.PlayerDesign,
-                        "Tarjeta, vinilo, trébol y Apple Music, con vista previa", "theme layout background seek bar slider up next shadow volume bar"),
                     SettingsLink("Controles y diseño", R.drawable.sliders, { systemIndigo }, route("settings/appearance/advanced"),
                         "Carátula, mini reproductor, botones e insignias", "mini player comment button audio quality badge thumbnail"),
-                    SettingsLink("Iconos del reproductor", R.drawable.tune, { systemOrange }, route("settings/appearance/playericons"),
-                        "Elige los iconos de los controles"),
                     SettingsLink("Canvas", R.drawable.canvas_art, { systemTeal }, route("settings/appearance/canvas"),
                         "Carátula animada tras el reproductor", "video animated artwork"),
                 ),
@@ -161,7 +156,6 @@ object SettingsHubs {
                 listOf(
                     SettingsLink("Tema", R.drawable.palette, { systemPurple }, route("settings/appearance/theme"), "Acento, modo oscuro y negro puro", "dark light accent color"),
                     SettingsLink("Ajustes predefinidos", R.drawable.palette, { systemPink }, route("settings/appearance/presets"), "Estilos listos"),
-                    SettingsLink("Personalizar", R.drawable.edit, { systemOrange }, route("settings/appearance/diy"), "Diseña un tema desde cero", "diy"),
                     SettingsLink("Cristal líquido", R.drawable.palette, { systemCyan }, route("settings/appearance/liquidglass"), "Desenfoque, tinte, brillos y lente", "glass blur"),
                 ),
             ),
@@ -282,7 +276,7 @@ object SettingsSheets {
 fun rememberSettingsActionHandler(navController: NavController): (SettingsAction) -> Unit = { action ->
     when (action) {
         is SettingsAction.Route -> navController.navigate(action.route)
-        SettingsAction.PlayerDesign, SettingsAction.LyricsStyle, SettingsAction.AppleMusicImport -> SettingsSheets.open = action
+        SettingsAction.LyricsStyle, SettingsAction.AppleMusicImport -> SettingsSheets.open = action
     }
 }
 
@@ -291,12 +285,6 @@ fun rememberSettingsActionHandler(navController: NavController): (SettingsAction
 fun SettingsSheetHost(navController: NavController) {
     val close = { SettingsSheets.open = null }
     when (SettingsSheets.open) {
-        SettingsAction.PlayerDesign -> IosPageSheet("Diseño del reproductor", close) {
-            PlayerDesignSheetContent(onMoreOptions = {
-                close()
-                navController.navigate("settings/appearance/playertheme")
-            })
-        }
         SettingsAction.LyricsStyle -> IosPageSheet("Estilo de la letra", close) { LyricsAnimationSheetContent() }
         SettingsAction.AppleMusicImport -> AppleMusicImportDialogHost(
             navController = navController,
