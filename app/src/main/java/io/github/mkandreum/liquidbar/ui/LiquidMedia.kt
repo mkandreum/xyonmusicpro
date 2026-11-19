@@ -49,6 +49,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalView
@@ -299,26 +302,162 @@ private fun ArcLabel(text: String, color: Color, at: Offset, alignEnd: Boolean) 
 
 /* ═════════════ 15 · Play/pausa de cristal ═════════════ */
 
-/** Silueta del play (triángulo) que pasa a la pausa (dos barras) con [morph] 0 → 1. */
-private class PlayPauseShape(private val morph: () -> Float) : androidx.compose.ui.graphics.Shape {
-    override fun createOutline(size: Size, layoutDirection: androidx.compose.ui.unit.LayoutDirection, density: androidx.compose.ui.unit.Density): androidx.compose.ui.graphics.Outline =
-        androidx.compose.ui.graphics.Outline.Generic(playPausePath(size.width, size.height, morph().coerceIn(0f, 1f)))
+/**
+ * Polígono con los vértices redondeados: en cada esquina la línea se corta [radius] antes y se une con una
+ * curva cuadrática que pasa por el vértice. Los puntos que coinciden (el triángulo del play visto como
+ * cuadrilátero a mitad de morph) se funden en uno, y el radio nunca pasa de media arista.
+ */
+private fun Path.roundedPolygon(points: List<Offset>, radius: Float) {
+    val pts = ArrayList<Offset>(points.size)
+    for (p in points) if (pts.isEmpty() || (pts.last() - p).getDistance() > 0.5f) pts += p
+    if (pts.size > 2 && (pts.first() - pts.last()).getDistance() <= 0.5f) pts.removeAt(pts.lastIndex)
+    if (pts.size < 3) return
+    val n = pts.size
+    fun cut(from: Offset, to: Offset): Offset {
+        val d = to - from
+        val len = d.getDistance()
+        return from + d * (minOf(radius, len / 2f) / len)
+    }
+    for (i in 0 until n) {
+        val prev = pts[(i - 1 + n) % n]
+        val cur = pts[i]
+        val next = pts[(i + 1) % n]
+        val a = cut(cur, prev)
+        val b = cut(cur, next)
+        if (i == 0) moveTo(a.x, a.y) else lineTo(a.x, a.y)
+        quadraticTo(cur.x, cur.y, b.x, b.y)
+    }
+    close()
 }
 
-private fun playPausePath(w: Float, h: Float, t: Float): Path {
-    val bar = w * 0.32f
-    return Path().apply {
-        moveTo(lerp(w * 0.12f, w * 0.10f, t), 0f); lineTo(lerp(w * 0.56f, w * 0.10f + bar, t), lerp(h * 0.25f, 0f, t))
-        lineTo(lerp(w * 0.56f, w * 0.10f + bar, t), lerp(h * 0.75f, h, t)); lineTo(lerp(w * 0.12f, w * 0.10f, t), h); close()
-        moveTo(lerp(w * 0.56f, w * 0.90f - bar, t), lerp(h * 0.25f, 0f, t)); lineTo(lerp(w * 0.98f, w * 0.90f, t), lerp(h * 0.5f, 0f, t))
-        lineTo(lerp(w * 0.98f, w * 0.90f, t), lerp(h * 0.5f, h, t)); lineTo(lerp(w * 0.56f, w * 0.90f - bar, t), lerp(h * 0.75f, h, t)); close()
+/** Play (triángulo) → pausa (dos barras) con [t] 0 → 1, con las esquinas redondeadas. */
+private fun Path.playPauseGlyph(w: Float, h: Float, t: Float) {
+    val bar = w * 0.30f
+    val r = w * 0.13f
+    // Mitad izquierda: trapecio del triángulo → barra izquierda.
+    roundedPolygon(
+        listOf(
+            Offset(lerp(w * 0.14f, w * 0.12f, t), 0f),
+            Offset(lerp(w * 0.56f, w * 0.12f + bar, t), lerp(h * 0.24f, 0f, t)),
+            Offset(lerp(w * 0.56f, w * 0.12f + bar, t), lerp(h * 0.76f, h, t)),
+            Offset(lerp(w * 0.14f, w * 0.12f, t), h),
+        ),
+        r,
+    )
+    // Mitad derecha: punta del triángulo → barra derecha (solapa con la izquierda en el play).
+    roundedPolygon(
+        listOf(
+            Offset(lerp(w * 0.55f, w * 0.88f - bar, t), lerp(h * 0.24f, 0f, t)),
+            Offset(lerp(w * 0.96f, w * 0.88f, t), lerp(h * 0.5f, 0f, t)),
+            Offset(lerp(w * 0.96f, w * 0.88f, t), lerp(h * 0.5f, h, t)),
+            Offset(lerp(w * 0.55f, w * 0.88f - bar, t), lerp(h * 0.76f, h, t)),
+        ),
+        r,
+    )
+}
+
+/** «Siguiente» (dos triángulos redondeados); [next] = false lo refleja para «anterior». */
+private fun Path.skipGlyph(w: Float, h: Float, next: Boolean) {
+    fun x(v: Float) = if (next) v else w - v
+    val r = w * 0.09f
+    roundedPolygon(listOf(Offset(x(0f), h * 0.12f), Offset(x(w * 0.52f), h * 0.5f), Offset(x(0f), h * 0.88f)), r)
+    roundedPolygon(listOf(Offset(x(w * 0.46f), h * 0.12f), Offset(x(w), h * 0.5f), Offset(x(w * 0.46f), h * 0.88f)), r)
+}
+
+/** Silueta de cristal sacada de un glifo; se reconstruye en cada dibujo, así sigue al morph sin recomponer. */
+private class GlyphShape(private val build: Path.(w: Float, h: Float) -> Unit) : androidx.compose.ui.graphics.Shape {
+    override fun createOutline(size: Size, layoutDirection: androidx.compose.ui.unit.LayoutDirection, density: androidx.compose.ui.unit.Density): androidx.compose.ui.graphics.Outline =
+        androidx.compose.ui.graphics.Outline.Generic(Path().apply { build(size.width, size.height) })
+}
+
+/** Muelle de la pulsación: se hunde rápido y sin rebote. */
+private val LensPressSpring = spring<Float>(dampingRatio = 0.9f, stiffness = 900f, visibilityThreshold = 0.001f)
+
+/** Al soltar rebota: el sobreimpulso por debajo de 0 hace que crezca un poco antes de asentarse. */
+private val LensReleaseSpring = spring<Float>(dampingRatio = 0.38f, stiffness = 420f, visibilityThreshold = 0.001f)
+
+/**
+ * Botón que es solo el símbolo, hecho de cristal (sin círculo ni cuadrado detrás). El glifo, con las esquinas
+ * redondeadas, es una lupa de verdad: aumenta lo que hay debajo y lo abomba (el centro aumenta más que los
+ * bordes), con filo de luz. Al pulsar se hunde mientras la lupa aumenta y se abomba más; al soltar rebota con
+ * sobreimpulso y el filo destella.
+ */
+@Composable
+private fun GlassGlyphButton(
+    backdrop: GlassBackdrop,
+    size: Dp,
+    label: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    glyphFraction: Float = 0.62f,
+    glyph: Path.(w: Float, h: Float) -> Unit,
+) {
+    val view = LocalView.current
+    val src = remember { MutableInteractionSource() }
+    val press = remember { Animatable(0f) }
+    val flash = remember { Animatable(0f) }
+    LaunchedEffect(src) {
+        src.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> launch { press.animateTo(1f, LensPressSpring) }
+                is PressInteraction.Release -> {
+                    launch { press.animateTo(0f, LensReleaseSpring) }
+                    launch {
+                        flash.snapTo(1f)
+                        flash.animateTo(0f, tween(420))
+                    }
+                }
+                is PressInteraction.Cancel -> launch { press.animateTo(0f, LensReleaseSpring) }
+            }
+        }
+    }
+    val currentGlyph by rememberUpdatedState(glyph)
+    val shape = remember { GlyphShape { w, h -> currentGlyph(w, h) } }
+    val sources = remember(backdrop) { listOf(GlassSource(backdrop)) }
+    Box(
+        modifier
+            .size(size)
+            .clickable(interactionSource = src, indication = null, role = Role.Button, onClickLabel = label) {
+                io.github.mkandreum.liquidbar.LiquidHaptics.performed()
+                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+                onClick()
+            }
+            .semantics { contentDescription = label },
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            Modifier
+                .size(size * glyphFraction)
+                .graphicsLayer {
+                    // Sin recortar: el rebote por debajo de 0 lo agranda un pelín al soltar.
+                    val s = 1f - 0.1f * press.value
+                    scaleX = s
+                    scaleY = s
+                }
+                .glassSurface({ sources }, shape) {
+                    val p = press.value.coerceIn(0f, 1f)
+                    val f = flash.value
+                    io.github.mkandreum.liquidbar.glass.GlassLook(
+                        blur = 2.dp.toPx(),
+                        saturation = 1.6f,
+                        zoom = 1.3f + 0.3f * p,
+                        bulge = 0.35f + 0.25f * p,
+                        surface = Color.White.copy(alpha = 0.30f + 0.08f * p + 0.10f * f),
+                        rim = Color.White.copy(alpha = (0.85f + 0.15f * f).coerceAtMost(1f)),
+                        rimWidth = 2.dp.toPx(),
+                        darkRimAlpha = 0.25f,
+                        darkRimWidth = 1.dp.toPx(),
+                        shadowAlpha = 0.55f,
+                        fallback = Color.White.copy(alpha = 0.85f),
+                    )
+                },
+        )
     }
 }
 
 /**
- * Play/pausa hecho de cristal, sin círculo: el propio triángulo (y las dos barras de la pausa) es una pieza de
- * cristal que amplía y desenfoca lo que hay debajo, con filo de luz. Se transforma con spring(0.6, 500), al pulsar
- * se hunde y crece la lupa, y vibra. [backdrop] es lo que refracta (la capa `glassSource` del reproductor).
+ * Play/pausa: solo el símbolo, de cristal, que se transforma de play a pausa con spring(0.6, 500).
+ * [backdrop] es lo que refracta (la capa `glassSource` del reproductor).
  */
 @Composable
 fun LiquidPlayButton(
@@ -327,92 +466,15 @@ fun LiquidPlayButton(
     backdrop: GlassBackdrop,
     modifier: Modifier = Modifier,
     size: Dp = 84.dp,
-    tint: Color = Color.White.copy(alpha = 0.38f),
 ) {
-    val view = LocalView.current
     val morph = remember { Animatable(if (isPlaying) 1f else 0f) }
     LaunchedEffect(isPlaying) { morph.animateTo(if (isPlaying) 1f else 0f, LiquidSprings.toggle) }
-    val src = remember { MutableInteractionSource() }
-    val pressed by src.collectIsPressedAsState()
-    val press by animateFloatAsState(if (pressed) 1f else 0f, LiquidSprings.press, label = "playPress")
-    val shape = remember { PlayPauseShape { morph.value } }
-    val sources = remember(backdrop) { listOf(GlassSource(backdrop)) }
-    Box(
-        modifier
-            .size(size)
-            .clickable(interactionSource = src, indication = null, role = Role.Button, onClickLabel = if (isPlaying) "Pausa" else "Reproducir") {
-                io.github.mkandreum.liquidbar.LiquidHaptics.performed(); view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY); onClick()
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            Modifier
-                .size(size * 0.62f)
-                .graphicsLayer { val s = 1f - 0.08f * press; scaleX = s; scaleY = s }
-                .glassSurface({ sources }, shape) {
-                    io.github.mkandreum.liquidbar.glass.GlassLook(
-                        blur = 2.dp.toPx(),
-                        saturation = 1.6f,
-                        refractionHeight = 0f,
-                        refractionAmount = 0f,
-                        zoom = 1.25f + 0.35f * press,
-                        surface = tint,
-                        rim = Color.White.copy(alpha = 0.9f),
-                        rimWidth = 2.dp.toPx(),
-                        darkRimAlpha = 0.25f,
-                        darkRimWidth = 1.dp.toPx(),
-                        shadowAlpha = 0.55f,
-                        fallback = Color.White.copy(alpha = 0.85f),
-                    )
-                }
-        )
+    GlassGlyphButton(backdrop, size, if (isPlaying) "Pausa" else "Reproducir", onClick, modifier, glyphFraction = 0.62f) { w, h ->
+        playPauseGlyph(w, h, morph.value.coerceIn(0f, 1f))
     }
 }
 
-/** Silueta de «siguiente» (dos triángulos); [next] = false la refleja para «anterior». */
-private class SkipShape(private val next: Boolean) : androidx.compose.ui.graphics.Shape {
-    override fun createOutline(size: Size, layoutDirection: androidx.compose.ui.unit.LayoutDirection, density: androidx.compose.ui.unit.Density): androidx.compose.ui.graphics.Outline {
-        val w = size.width; val h = size.height
-        fun x(v: Float) = if (next) v else w - v
-        val p = Path().apply {
-            moveTo(x(0f), h * 0.1f); lineTo(x(w * 0.52f), h * 0.5f); lineTo(x(0f), h * 0.9f); close()
-            moveTo(x(w * 0.48f), h * 0.1f); lineTo(x(w), h * 0.5f); lineTo(x(w * 0.48f), h * 0.9f); close()
-        }
-        return androidx.compose.ui.graphics.Outline.Generic(p)
-    }
-}
-
-/** Cristal con forma de glifo (sin círculo): amplía y desenfoca lo de debajo, con filo de luz; se hunde al pulsar. */
-@Composable
-private fun GlassGlyph(shape: androidx.compose.ui.graphics.Shape, backdrop: GlassBackdrop, size: Dp, glyphFraction: Float, tint: Color, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val view = LocalView.current
-    val src = remember { MutableInteractionSource() }
-    val pressed by src.collectIsPressedAsState()
-    val press by animateFloatAsState(if (pressed) 1f else 0f, LiquidSprings.press, label = "glyphPress")
-    val sources = remember(backdrop) { listOf(GlassSource(backdrop)) }
-    Box(
-        modifier.size(size).clickable(interactionSource = src, indication = null, role = Role.Button, onClickLabel = label) {
-            io.github.mkandreum.liquidbar.LiquidHaptics.performed(); view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY); onClick()
-        },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            Modifier
-                .size(size * glyphFraction)
-                .graphicsLayer { val s = 1f - 0.1f * press; scaleX = s; scaleY = s }
-                .glassSurface({ sources }, shape) {
-                    io.github.mkandreum.liquidbar.glass.GlassLook(
-                        blur = 2.dp.toPx(), saturation = 1.6f, zoom = 1.25f + 0.35f * press,
-                        surface = tint, rim = Color.White.copy(alpha = 0.9f), rimWidth = 2.dp.toPx(),
-                        darkRimAlpha = 0.25f, darkRimWidth = 1.dp.toPx(), shadowAlpha = 0.55f,
-                        fallback = Color.White.copy(alpha = 0.85f),
-                    )
-                }
-        )
-    }
-}
-
-/** Anterior / siguiente de cristal, con la misma forma de glifo que el play (sin círculo). */
+/** Anterior / siguiente: solo el símbolo de salto, del mismo cristal que el play. */
 @Composable
 fun LiquidSkipButton(
     next: Boolean,
@@ -420,10 +482,10 @@ fun LiquidSkipButton(
     backdrop: GlassBackdrop,
     modifier: Modifier = Modifier,
     size: Dp = 64.dp,
-    tint: Color = Color.White.copy(alpha = 0.38f),
 ) {
-    val shape = remember(next) { SkipShape(next) }
-    GlassGlyph(shape, backdrop, size, 0.62f, tint, if (next) "Siguiente" else "Anterior", onClick, modifier)
+    GlassGlyphButton(backdrop, size, if (next) "Siguiente" else "Anterior", onClick, modifier, glyphFraction = 0.62f) { w, h ->
+        skipGlyph(w, h, next)
+    }
 }
 
 /* ═════════════ 16 · Mini reproductor ═════════════ */

@@ -213,7 +213,8 @@ private fun IosMenuSeparator(menuColors: IosMenuColors) {
     Box(
         Modifier
             .fillMaxWidth()
-            .height(21.dp)
+            // iOS keeps a slim gap between groups; 21dp per divider made long menus overflow.
+            .height(9.dp)
             .padding(horizontal = IosMenuMaterial.SeparatorInset),
         contentAlignment = Alignment.Center,
     ) {
@@ -313,6 +314,27 @@ private fun IosMenuRow(
     }
 }
 
+/** The checkmark iOS draws next to a selected menu row. */
+@Composable
+fun IosCheckmark(modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
+    val stroke = if (color == Color.Unspecified) IosTheme.tint else color
+    androidx.compose.foundation.Canvas(modifier.size(width = 16.dp, height = 12.dp)) {
+        drawPath(
+            path = androidx.compose.ui.graphics.Path().apply {
+                moveTo(0f, size.height * 0.55f)
+                lineTo(size.width * 0.35f, size.height)
+                lineTo(size.width, 0f)
+            },
+            color = stroke,
+            style = androidx.compose.ui.graphics.drawscope.Stroke(
+                width = 2.dp.toPx(),
+                cap = androidx.compose.ui.graphics.StrokeCap.Round,
+                join = androidx.compose.ui.graphics.StrokeJoin.Round,
+            ),
+        )
+    }
+}
+
 /**
  * Anchors a menu to [content], opening it below on tap — SwiftUI's Menu.
  */
@@ -340,26 +362,5 @@ fun IosMenuAnchor(
                 }
             }
         }
-    }
-}
-
-/** The checkmark iOS draws next to a selected menu row. */
-@Composable
-fun IosCheckmark(modifier: Modifier = Modifier, color: Color = Color.Unspecified) {
-    val stroke = if (color == Color.Unspecified) IosTheme.tint else color
-    androidx.compose.foundation.Canvas(modifier.size(width = 16.dp, height = 12.dp)) {
-        drawPath(
-            path = androidx.compose.ui.graphics.Path().apply {
-                moveTo(0f, size.height * 0.55f)
-                lineTo(size.width * 0.35f, size.height)
-                lineTo(size.width, 0f)
-            },
-            color = stroke,
-            style = androidx.compose.ui.graphics.drawscope.Stroke(
-                width = 2.dp.toPx(),
-                cap = androidx.compose.ui.graphics.StrokeCap.Round,
-                join = androidx.compose.ui.graphics.StrokeJoin.Round,
-            ),
-        )
     }
 }

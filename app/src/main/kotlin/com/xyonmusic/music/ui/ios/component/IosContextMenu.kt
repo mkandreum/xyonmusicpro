@@ -49,64 +49,6 @@ import com.xyonmusic.music.ui.ios.foundation.LocalIosTextStyle
 import kotlin.math.roundToInt
 
 /**
- * The iOS "hold to open" context menu: press and hold anything, the pressed thing lifts out
- * of a dimmed screen and a glass menu materialises beside it.
- *
- * Timing read off the reference comparison clip (AQPov…, 30fps): the panel is up in about
- * four frames, arriving as a small, heavily blurred, half-transparent shape that resolves
- * into a crisp full-size card -- a blur that clears, not just an alpha ramp, which is what
- * makes it read as glass condensing rather than a popup appearing. Dismissal is faster and
- * plain (no blur on the way out), as it is on iOS.
- *
- * The panel itself is [IosMenu]; this adds the gesture, the lift, the scrim and the motion.
- */
-@Composable
-fun IosContextMenu(
-    sections: List<IosMenuSection>,
-    modifier: Modifier = Modifier,
-    enabled: Boolean = true,
-    /** Gap between the anchor and the menu, matching the reference's tight offset. */
-    anchorGap: Dp = 8.dp,
-    /** Kept off the screen edges by this much, as iOS clamps its menus. */
-    screenMargin: Dp = 12.dp,
-    onClick: (() -> Unit)? = null,
-    /** Apple Music's Add / Favourite / Share row across the top of the panel. */
-    quickActions: List<IosMenuItem> = emptyList(),
-    content: @Composable () -> Unit,
-) {
-    val haptics = LocalHapticFeedback.current
-    var anchor by remember { mutableStateOf(Rect.Zero) }
-    var open by remember { mutableStateOf(false) }
-
-    Box(
-        modifier = modifier
-            .onGloballyPositioned { anchor = it.boundsInWindow() }
-            .pointerInput(enabled, onClick) {
-                if (!enabled) return@pointerInput
-                detectTapGestures(
-                    onLongPress = {
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        open = true
-                    },
-                    onTap = { onClick?.invoke() },
-                )
-            }
-    ) {
-        content()
-    }
-
-    IosContextMenuOverlay(
-        sections = sections,
-        anchor = anchor.takeIf { open },
-        onDismissRequest = { open = false },
-        anchorGap = anchorGap,
-        screenMargin = screenMargin,
-        liftedContent = content,
-        quickActions = quickActions,
-    )
-}
-
-/**
  * The same presentation, for callers that already know where the anchor is and run their
  * own long-press (the floating nav bar's tabs, which cannot hand their gesture over --
  * their cells are the tab bar's own click targets).
@@ -148,7 +90,6 @@ fun IosContextMenuOverlay(
             },
             label = "morph",
         ) { open -> if (open) 1f else 0f }
-        val enterBlurPx = with(density) { MenuEnterBlur.toPx() }
         // Menu's placed top-left, written by layout, read by the layer's pivot.
         val menuOrigin = remember { intArrayOf(0, 0) }
 
@@ -215,13 +156,6 @@ fun IosContextMenuOverlay(
                                         pivotFractionX = ((anchorRect.center.x - menuOrigin[0]) / size.width).coerceIn(0f, 1f),
                                         pivotFractionY = ((anchorRect.center.y - menuOrigin[1]) / size.height).coerceIn(0f, 1f),
                                     )
-                                    // Heavy blur that clears as it arrives; none on exit
-                                    // (the reference's dismissal is a straight fade).
-                                    // Below API 31 the panel arrives without it.
-                                    val radius = if (transition.targetState) enterBlurPx * (1f - p).coerceIn(0f, 1f) else 0f
-                                    if (radius > 0.01f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                        renderEffect = BlurEffect(radius, radius)
-                                    }
                                 }
                             ) {
                                 IosMenu(
@@ -272,7 +206,6 @@ private val MenuEnterEasing = CubicBezierEasing(0.2f, 0.9f, 0.25f, 1.03f)
 private val MenuExitEasing = CubicBezierEasing(0.4f, 0f, 0.9f, 0.5f)
 
 /** How blurred the panel is on its first frame (clip f10: content unreadable). */
-private val MenuEnterBlur = 20.dp
 private const val ScrimAlpha = 0.28f
 private const val AnchorLift = 1.05f
 
@@ -284,4 +217,62 @@ private object FullWindowPositionProvider : PopupPositionProvider {
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ): IntOffset = IntOffset.Zero
+}
+
+/**
+ * The iOS "hold to open" context menu: press and hold anything, the pressed thing lifts out
+ * of a dimmed screen and a glass menu materialises beside it.
+ *
+ * Timing read off the reference comparison clip (AQPov…, 30fps): the panel is up in about
+ * four frames, arriving as a small, heavily blurred, half-transparent shape that resolves
+ * into a crisp full-size card -- a blur that clears, not just an alpha ramp, which is what
+ * makes it read as glass condensing rather than a popup appearing. Dismissal is faster and
+ * plain (no blur on the way out), as it is on iOS.
+ *
+ * The panel itself is [IosMenu]; this adds the gesture, the lift, the scrim and the motion.
+ */
+@Composable
+fun IosContextMenu(
+    sections: List<IosMenuSection>,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    /** Gap between the anchor and the menu, matching the reference's tight offset. */
+    anchorGap: Dp = 8.dp,
+    /** Kept off the screen edges by this much, as iOS clamps its menus. */
+    screenMargin: Dp = 12.dp,
+    onClick: (() -> Unit)? = null,
+    /** Apple Music's Add / Favourite / Share row across the top of the panel. */
+    quickActions: List<IosMenuItem> = emptyList(),
+    content: @Composable () -> Unit,
+) {
+    val haptics = LocalHapticFeedback.current
+    var anchor by remember { mutableStateOf(Rect.Zero) }
+    var open by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier
+            .onGloballyPositioned { anchor = it.boundsInWindow() }
+            .pointerInput(enabled, onClick) {
+                if (!enabled) return@pointerInput
+                detectTapGestures(
+                    onLongPress = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        open = true
+                    },
+                    onTap = { onClick?.invoke() },
+                )
+            }
+    ) {
+        content()
+    }
+
+    IosContextMenuOverlay(
+        sections = sections,
+        anchor = anchor.takeIf { open },
+        onDismissRequest = { open = false },
+        anchorGap = anchorGap,
+        screenMargin = screenMargin,
+        liftedContent = content,
+        quickActions = quickActions,
+    )
 }

@@ -60,16 +60,9 @@ internal object TabTransitions {
  * Depth blur for a tab page while it enters or leaves: sharp when settled, [TabTransitions.MaxBlurDp]
  * blurred before it arrives and after it leaves. API 31+ only (RenderEffect); older devices just fade.
  */
+@Suppress("UNUSED_PARAMETER")
 @Composable
-internal fun Modifier.tabDepthBlur(scope: AnimatedVisibilityScope): Modifier {
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return this
-    val density = LocalDensity.current
-    val blurDp by scope.transition.animateFloat(
-        transitionSpec = { spring(dampingRatio = 1f, stiffness = 520f) },
-        label = "tabDepthBlur",
-    ) { state -> if (state == EnterExitState.Visible) 0f else TabTransitions.MaxBlurDp }
-    return graphicsLayer {
-        val px = with(density) { blurDp.dp.toPx() }
-        renderEffect = if (px > 0.5f) BlurEffect(px, px, TileMode.Decal) else null
-    }
-}
+internal fun Modifier.tabDepthBlur(scope: AnimatedVisibilityScope): Modifier =
+    // A full-page RenderEffect blur on every frame of a tab switch dropped frames on
+    // mid-range phones; the fade and rise around it carry the transition on their own.
+    this

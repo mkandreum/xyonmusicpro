@@ -592,7 +592,7 @@ internal fun LibraryItemMenu(
 
     val quick = listOfNotNull(
         IosMenuItem(stringResource(R.string.action_download), icon = glyph(sf("SFArrowDownToLine"))) {
-            withSongs { s -> downloadSongs(context, s.map { DownloadTarget(it.id, it.song.title) }, downloadUtil.downloads.value) }
+            withSongs { s -> downloadSongs(context, s.map { DownloadTarget(it.id, it.song.title, it.artists.firstOrNull()?.name, it.song.duration) }, downloadUtil.downloads.value) }
         },
         (item as? Album)?.let { album ->
             IosMenuItem(

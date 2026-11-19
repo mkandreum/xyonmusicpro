@@ -107,6 +107,7 @@ fun YouTubeSongMenu(
     val database = LocalDatabase.current.get()
     val playerConnection = LocalPlayerConnection.current ?: return
     val librarySong by database.song(song.id).collectAsState(initial = null)
+    val downloadActions = LocalDownloadUtil.current.get()
     val download by LocalDownloadUtil.current.get().getDownload(song.id).collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
     val syncUtils = LocalSyncUtils.current.get()
@@ -460,28 +461,18 @@ fun YouTubeSongMenu(
                                     SymbolIcon(symbol = sf("arrow.down.circle"), contentDescription = null)
                                 },
                                 onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
+                                    com.xyonmusic.music.playback.removeDownloads(context, listOf(song.id))
                                 }
                             )
                         }
                         Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
                             IosMenuItemData(
-                                title = { Text(text = stringResource(R.string.downloading)) },
+                                title = { Text(text = stringResource(R.string.cancel_download)) },
                                 icon = {
                                     DownloadRingIcon(download)
                                 },
                                 onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
+                                    com.xyonmusic.music.playback.cancelDownload(context, song.id, downloadActions.downloads.value)
                                 }
                             )
                         }
@@ -496,17 +487,7 @@ fun YouTubeSongMenu(
                                     database.transaction {
                                         insert(song.toMediaMetadata())
                                     }
-                                    val downloadRequest = DownloadRequest
-                                        .Builder(song.id, song.id.toUri())
-                                        .setCustomCacheKey(song.id)
-                                        .setData(song.title.toByteArray())
-                                        .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
+                                    com.xyonmusic.music.playback.downloadSongs(context, listOf(com.xyonmusic.music.playback.DownloadTarget(song.id, song.title, song.artists.firstOrNull()?.name, song.duration ?: -1)), downloadActions.downloads.value)
                                 }
                             )
                         }

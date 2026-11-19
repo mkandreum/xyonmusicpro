@@ -270,6 +270,20 @@ object YTPlayerUtils {
 
     private val poTokenGenerator = PoTokenGenerator()
 
+    /** The client whose URL each video is currently playing or downloading from. */
+    private val streamClientFor = java.util.concurrent.ConcurrentHashMap<String, String>()
+
+    /** Clients whose URL googlevideo answered with 403 for a video, until the given time. */
+    private val rejectedClients = java.util.concurrent.ConcurrentHashMap<String, Map<String, Long>>()
+
+    /** How long a client stays skipped for a video after its URL got a 403. */
+    private const val REJECTED_CLIENT_TTL_MS = 30 * 60 * 1000L
+
+    private fun isRejected(videoId: String, client: YouTubeClient): Boolean {
+        val until = rejectedClients[videoId]?.get(client.clientName) ?: return false
+        return until > System.currentTimeMillis()
+    }
+
     /** Detached so a slow metadata fetch outlives the playback call that started it. */
     private val metadataScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
 
@@ -886,6 +900,8 @@ object YTPlayerUtils {
         var partialUrl: String? = null
         var partialExpires: Int? = null
         var partialResponse: PlayerResponse? = null
+        var partialClient: YouTubeClient? = null
+        var chosenClient: YouTubeClient? = null
         clientLoop@ for (clientIndex in (startIndex until STREAM_FALLBACK_CLIENTS.size)) {
             format = null
             streamUrl = null
@@ -894,10 +910,18 @@ object YTPlayerUtils {
             val client: YouTubeClient
             if (clientIndex == -1) {
                 client = MAIN_CLIENT
+                if (isRejected(videoId, client)) {
+                    Timber.tag(logTag).d("Skipping ${client.clientName}: its last URL for $videoId got a 403")
+                    continue
+                }
                 streamPlayerResponse = retryMainPlayerResponse ?: mainPlayerResponse
                 Timber.tag(logTag).d("Trying stream from MAIN_CLIENT: ${client.clientName}")
             } else {
                 client = STREAM_FALLBACK_CLIENTS[clientIndex]
+                if (isRejected(videoId, client)) {
+                    Timber.tag(logTag).d("Skipping ${client.clientName}: its last URL for $videoId got a 403")
+                    continue
+                }
                 Timber.tag(logTag).d("Trying fallback client ${clientIndex + 1}/${STREAM_FALLBACK_CLIENTS.size}: ${client.clientName}")
                 PlaybackLogManager.log(PlaybackLogLevel.DEBUG, "Trying fallback [${clientIndex + 1}/${STREAM_FALLBACK_CLIENTS.size}]", client.clientName)
 
@@ -999,6 +1023,7 @@ object YTPlayerUtils {
                     streamUrl = partialUrl
                     streamExpiresInSeconds = partialExpires
                     streamPlayerResponse = partialResponse
+                    chosenClient = partialClient
                     break@clientLoop
                 }
                 if (clientIndex == STREAM_FALLBACK_CLIENTS.size - 1 || isPrivatelyOwnedTrack) {
@@ -1008,6 +1033,7 @@ object YTPlayerUtils {
                         Timber.tag(logTag).d("Using last fallback client without validation: ${STREAM_FALLBACK_CLIENTS[clientIndex].clientName}")
                     }
                     Timber.tag(TAG).i("Playback: client=${currentClient.clientName}, videoId=$videoId, private=$isPrivatelyOwnedTrack")
+                    chosenClient = currentClient
                     break@clientLoop
                 }
 
@@ -1015,6 +1041,7 @@ object YTPlayerUtils {
                     Timber.tag(logTag).d("Stream validated successfully with client: ${currentClient.clientName}")
                     PlaybackLogManager.log(PlaybackLogLevel.INFO, "Stream validated", currentClient.clientName)
                     Timber.tag(TAG).i("Playback: client=${currentClient.clientName}, videoId=$videoId")
+                    chosenClient = currentClient
                     break@clientLoop
                 } else {
                     Timber.tag(logTag).d("Stream validation failed for client: ${currentClient.clientName}")
@@ -1023,6 +1050,7 @@ object YTPlayerUtils {
                         partialUrl = streamUrl
                         partialExpires = streamExpiresInSeconds
                         partialResponse = streamPlayerResponse
+                        partialClient = currentClient
                     }
 
                     // For web clients: try alternate n-transform and re-validate (Zemer approach)
@@ -1044,7 +1072,10 @@ object YTPlayerUtils {
                             Timber.tag(logTag).e(e, "CipherDeobfuscator n-transform error")
                         }
 
-                        if (nTransformWorked) break@clientLoop
+                        if (nTransformWorked) {
+                            chosenClient = currentClient
+                            break@clientLoop
+                        }
                     }
                 }
                 }
@@ -1065,7 +1096,9 @@ object YTPlayerUtils {
             streamUrl = partialUrl
             streamExpiresInSeconds = partialExpires
             streamPlayerResponse = partialResponse
+            chosenClient = partialClient
         }
+        chosenClient?.let { streamClientFor[videoId] = it.clientName }
 
         if (streamPlayerResponse == null) {
             Timber.tag(logTag).e("Bad stream player response - all clients failed")
@@ -1255,7 +1288,18 @@ object YTPlayerUtils {
         return null
     }
 
+    /**
+     * googlevideo rejected (403) the URL [videoId] was using. The next resolution would otherwise
+     * start again from the same client and usually get the same rejection, so that client is
+     * skipped for this video for [REJECTED_CLIENT_TTL_MS] and the chain moves on to the next one.
+     */
     fun forceRefreshForVideo(videoId: String) {
-        Timber.tag(logTag).d("Force refreshing for videoId: $videoId")
+        val id = videoId.substringBefore('#')
+        val client = streamClientFor.remove(id) ?: return
+        val now = System.currentTimeMillis()
+        rejectedClients.compute(id) { _, old ->
+            (old.orEmpty().filterValues { it > now }) + (client to now + REJECTED_CLIENT_TTL_MS)
+        }
+        Timber.tag(logTag).d("403 on $id: skipping $client for this video for a while")
     }
 }

@@ -68,6 +68,7 @@
     <string name="action_download">Descargar</string>
     <string name="downloading">Descargando</string>
     <string name="remove_download">Eliminar descarga</string>
+    <string name="cancel_download">Cancelar descarga</string>
     <string name="import_playlist">Importar lista de reproducción</string>
     <string name="add_to_playlist">Añadir a lista de reproducción</string>
     <string name="view_artist">Ver artista</string>

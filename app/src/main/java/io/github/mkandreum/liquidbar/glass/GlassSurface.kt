@@ -59,6 +59,11 @@ data class GlassLook(
     val depthEffect: Boolean = false,
     /** Aumento de lo que hay debajo, centrado en la superficie (1 = sin lupa). Lo usan las lentes de LiquidUI. */
     val zoom: Float = 1f,
+    /**
+     * Abombado de lupa (0 = plano): el centro aumenta más que los bordes, como una lente convexa. Es radial,
+     * así que no depende de la forma; sirve para cristales con silueta de glifo, donde el canto no es un rectángulo.
+     */
+    val bulge: Float = 0f,
     val surface: Color = Color.Transparent,
     val rim: Color = Color.Transparent,
     val rimWidth: Float = 0f,
@@ -182,7 +187,7 @@ private class GlassNode(
             val filter = ColorMatrixColorFilter(ColorMatrix().apply { setSaturation(l.saturation) })
             effect = if (effect == null) RenderEffect.createColorFilterEffect(filter) else RenderEffect.createColorFilterEffect(filter, effect)
         }
-        if (glassRefractionSupported && ((l.refractionHeight > 0.5f && l.refractionAmount > 0.5f) || l.zoom > 1.001f)) {
+        if (glassRefractionSupported && ((l.refractionHeight > 0.5f && l.refractionAmount > 0.5f) || l.zoom > 1.001f || l.bulge > 0.001f)) {
             val refraction = refraction(l, pad)
             effect = if (effect == null) refraction else RenderEffect.createChainEffect(refraction, effect)
         }
@@ -201,6 +206,7 @@ private class GlassNode(
         s.setFloatUniform("dispersion", l.dispersion)
         s.setFloatUniform("depthEffect", if (l.depthEffect) 1f else 0f)
         s.setFloatUniform("zoom", l.zoom.coerceAtLeast(1f))
+        s.setFloatUniform("bulge", l.bulge.coerceAtLeast(0f))
         return RenderEffect.createRuntimeShaderEffect(s, "content")
     }
 
@@ -234,6 +240,7 @@ uniform float amount;
 uniform float dispersion;
 uniform float depthEffect;
 uniform float zoom;
+uniform float bulge;
 
 float cornerFor(float2 p) {
     if (p.x < 0.0) return p.y < 0.0 ? radii.x : radii.w;
@@ -256,7 +263,9 @@ half4 main(float2 coord) {
     float d = shapeDistance(p);
     if (d > 0.0) return content.eval(coord);
     // Lupa: dentro de la forma se muestrea más cerca del centro (zoom = 1 lo deja igual).
-    float2 base = pad + size * 0.5 + p / zoom;
+    // Abombado: hacia el borde se muestrea más lejos del centro, así el centro queda más aumentado.
+    float rr = dot(p, p) / max(0.25 * min(size.x, size.y) * min(size.x, size.y), 0.0001);
+    float2 base = pad + size * 0.5 + (p / zoom) * (1.0 + bulge * rr);
     if (-d >= band) return content.eval(base);
     float t = 1.0 - (-d / band);
     float bend = circleMap(t) * amount;

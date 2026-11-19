@@ -590,17 +590,18 @@ private fun DownloadSymbolButton(backdrop: io.github.mkandreum.liquidbar.glass.G
     val busy = state == androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING || state == androidx.media3.exoplayer.offline.Download.STATE_QUEUED
     GlassSymbolButton(
         symbol = when { done -> "checkmark.circle"; busy -> "arrow.down.circle.dotted"; else -> "arrow.down.to.line" },
-        label = if (done) "Descargada" else "Descargar",
+        label = when { done -> "Descargada"; busy -> "Cancelar descarga"; else -> "Descargar" },
         backdrop = backdrop,
         size = 40.dp,
     ) {
         if (done) {
             // Already downloaded: tapping again removes the download and takes the song out of Songs.
-            androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(
-                context, com.xyonmusic.music.playback.ExoDownloadService::class.java, song.id, false,
-            )
+            com.xyonmusic.music.playback.removeDownloads(context, listOf(song.id))
             database.query { removeFromLibrary(song.id) }
-        } else if (!busy) {
+        } else if (busy) {
+            // Cancels only this song; the rest of the queue keeps downloading.
+            com.xyonmusic.music.playback.cancelDownload(context, song.id, downloadUtil.downloads.value)
+        } else {
             com.xyonmusic.music.playback.downloadSongs(
                 context,
                 listOf(com.xyonmusic.music.playback.DownloadTarget(song.id, song.title, song.artists.firstOrNull()?.name)),

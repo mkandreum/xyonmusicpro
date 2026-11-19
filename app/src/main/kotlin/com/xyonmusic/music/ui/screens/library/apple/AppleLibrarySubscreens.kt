@@ -1061,16 +1061,6 @@ internal fun LocalAccessCard(blocked: Boolean, onAllow: () -> Unit) {
     }
 }
 
-@Composable
-private fun EmptyNote(text: String) {
-    Text(
-        text,
-        style = SfStyle(15.sp, 20.sp).copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center),
-        color = IosTheme.colors.secondaryLabel,
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
-    )
-}
-
 /**
  * The shared Songs list: Play / Shuffle, then rows — under letter headers when sorted
  * by title — with the app's A–Z scrub rail on the trailing edge. [placeholder], when
@@ -1088,6 +1078,8 @@ private fun AppleSongList(
     header: (@Composable () -> Unit)? = null,
 ) {
     val playerConnection = LocalPlayerConnection.current
+    // One subscription for the whole list; each row gets its own entry, so unchanged rows skip.
+    val downloads by LocalDownloadUtil.current.get().downloads.collectAsStateWithLifecycle()
     val state = rememberLazyListState()
     val allSongs = songs
     val isTab = LocalSubpageIsTab.current
@@ -1260,13 +1252,13 @@ private fun AppleSongList(
                 val base = offset
                 item(key = "h_$letter", contentType = "header") { Box(Modifier.animateItem()) { LetterHeader(letter) } }
                 itemsIndexed(list, key = { _, s -> s.id }, contentType = { _, _ -> "song" }) { i, song ->
-                    Box(Modifier.animateItem()) { SongRow(song, navController) { play(base + i) } }
+                    Box(Modifier.animateItem()) { SongRow(song, downloads[song.id], navController) { play(base + i) } }
                 }
                 offset += list.size
             }
         } else {
             itemsIndexed(songs, key = { _, s -> s.id }, contentType = { _, _ -> "song" }) { i, song ->
-                Box(Modifier.animateItem()) { SongRow(song, navController) { play(i) } }
+                Box(Modifier.animateItem()) { SongRow(song, downloads[song.id], navController) { play(i) } }
             }
         }
     }
@@ -1407,23 +1399,6 @@ private fun sectionLetter(title: String): String {
 }
 
 @Composable
-private fun PlayButton(icon: SfSymbol, label: String, modifier: Modifier, onClick: () -> Unit) {
-    Row(
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically,
-        modifier = modifier
-            .height(50.dp)
-            .clip(CircleShape)
-            .background(Color(0xFF767680).copy(alpha = 0.12f))
-            .iosRowPress(onClick = onClick),
-    ) {
-        IosGlyph(icon, IosTheme.tint, 17.dp)
-        Spacer(Modifier.width(4.dp))
-        Text(label, style = SfStyle(17.sp, 22.sp, tracking = (-0.43).sp), color = IosTheme.tint)
-    }
-}
-
-@Composable
 private fun LetterHeader(letter: String) {
     val colors = IosTheme.colors
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, top = 6.dp)) {
@@ -1434,8 +1409,8 @@ private fun LetterHeader(letter: String) {
 }
 
 @Composable
-private fun SongRow(song: Song, navController: NavController, onPlay: () -> Unit) {
-    val entries = songMenu(song, navController)
+private fun SongRow(song: Song, download: androidx.media3.exoplayer.offline.Download?, navController: NavController, onPlay: () -> Unit) {
+    val entries = songMenu(song, navController) { download }
     var dots by remember { mutableStateOf(false) }
     com.xyonmusic.music.ui.utils.ArtworkSourceHost(Modifier) { sourceModifier ->
     AppleContextMenu(
@@ -1460,7 +1435,7 @@ private fun SongRow(song: Song, navController: NavController, onPlay: () -> Unit
             trailing = {
                 // Every song shows where it stands: downloaded, downloading (ring), failed, or a
                 // faint arrow that downloads it on tap.
-                SongDownloadState(song)
+                SongDownloadState(song, download)
                 Box {
                     Box(
                         contentAlignment = Alignment.Center,
@@ -1586,7 +1561,12 @@ internal class SongMenuEntries(
 
 /** Apple Music's song menu: Download · Favorite · Share, then queue, playlist and navigation. */
 @Composable
-internal fun songMenu(song: Song, navController: NavController): SongMenuEntries {
+internal fun songMenu(
+    song: Song,
+    navController: NavController,
+    /** When the caller already observes downloads (a list), its state for this song; skips a per-row flow. */
+    hoistedDownload: (() -> androidx.media3.exoplayer.offline.Download?)? = null,
+): SongMenuEntries {
     val context = LocalContext.current
     val database = LocalDatabase.current.get()
     val playerConnection = LocalPlayerConnection.current
@@ -1596,14 +1576,20 @@ internal fun songMenu(song: Song, navController: NavController): SongMenuEntries
 
     // A file on the device has no YouTube video to download or link to.
     val isLocal = song.song.isLocal
-    val songDownload by remember(song.id) { downloadUtil.getDownload(song.id) }.collectAsStateWithLifecycle(initialValue = null)
+    val songDownload = if (hoistedDownload != null) hoistedDownload() else
+        remember(song.id) { downloadUtil.getDownload(song.id) }.collectAsStateWithLifecycle(initialValue = null).value
     val isOnDevice = songDownload?.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED || (songDownload == null && song.song.isDownloaded)
     val quick = listOfNotNull(
         // Download, or remove it when the song is already on the device.
-        if (isLocal) null else if (isOnDevice) IosMenuItem(stringResource(R.string.remove_download), icon = glyph(sf("SFTrash"))) {
-            androidx.media3.exoplayer.offline.DownloadService.sendRemoveDownload(context, com.xyonmusic.music.playback.ExoDownloadService::class.java, song.id, false)
+        if (isLocal) null else if (!isOnDevice && !com.xyonmusic.music.playback.shouldQueueDownload(songDownload?.state)) IosMenuItem(
+            stringResource(R.string.cancel_download), icon = glyph(sf("SFXmark")),
+        ) {
+            // Only this song: the other downloads keep going.
+            com.xyonmusic.music.playback.cancelDownload(context, song.id, downloadUtil.downloads.value)
+        } else if (isOnDevice) IosMenuItem(stringResource(R.string.remove_download), icon = glyph(sf("SFTrash"))) {
+            com.xyonmusic.music.playback.removeDownloads(context, listOf(song.id))
         } else IosMenuItem(stringResource(R.string.action_download), icon = glyph(sf("SFArrowDownToLine"))) {
-            downloadSongs(context, listOf(DownloadTarget(song.id, song.song.title)), downloadUtil.downloads.value)
+            downloadSongs(context, listOf(DownloadTarget(song.id, song.song.title, song.artists.firstOrNull()?.name, song.song.duration)), downloadUtil.downloads.value)
         },
         IosMenuItem(
             stringResource(R.string.favorite),
@@ -1652,14 +1638,12 @@ internal fun songMenu(song: Song, navController: NavController): SongMenuEntries
     return SongMenuEntries(quick, sections, addToPlaylist)
 }
 
-
 /** Download state of one song in the list, with a tap to download (or retry) when it is not on the device. */
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 @Composable
-private fun SongDownloadState(song: Song) {
+private fun SongDownloadState(song: Song, download: androidx.media3.exoplayer.offline.Download?) {
     val context = LocalContext.current
     val downloadUtil = LocalDownloadUtil.current.get()
-    val download by remember(song.id) { downloadUtil.getDownload(song.id) }.collectAsStateWithLifecycle(initialValue = null)
     val state = download?.state
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val startDownload = {
@@ -1690,7 +1674,16 @@ private fun SongDownloadState(song: Song) {
             contentAlignment = Alignment.Center,
             modifier = Modifier
                 .size(32.dp)
-                .then(if (s == 0 || s == 3) Modifier.clickable(onClickLabel = "Descargar") { startDownload() } else Modifier),
+                .then(
+                    when (s) {
+                        0, 3 -> Modifier.clickable(onClickLabel = "Descargar") { startDownload() }
+                        // Tapping the ring cancels only this song's download.
+                        1 -> Modifier.clickable(onClickLabel = "Cancelar descarga") {
+                            com.xyonmusic.music.playback.cancelDownload(context, song.id, downloadUtil.downloads.value)
+                        }
+                        else -> Modifier
+                    },
+                ),
         ) {
             when (s) {
                 2 -> com.xyonmusic.music.ui.component.SymbolIcon(sf("arrow.down.circle.fill"), contentDescription = "Descargada", size = 20.dp, tint = IosTheme.tint, chrome = 0f)
@@ -1699,5 +1692,32 @@ private fun SongDownloadState(song: Song) {
                 else -> com.xyonmusic.music.ui.component.SymbolIcon(sf("arrow.down.circle"), contentDescription = "Descargar", size = 20.dp, tint = IosTheme.colors.secondaryLabel.copy(alpha = 0.55f), chrome = 0f)
             }
         }
+    }
+}
+
+@Composable
+private fun EmptyNote(text: String) {
+    Text(
+        text,
+        style = SfStyle(15.sp, 20.sp).copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+        color = IosTheme.colors.secondaryLabel,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
+    )
+}
+
+@Composable
+private fun PlayButton(icon: SfSymbol, label: String, modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .height(50.dp)
+            .clip(CircleShape)
+            .background(Color(0xFF767680).copy(alpha = 0.12f))
+            .iosRowPress(onClick = onClick),
+    ) {
+        IosGlyph(icon, IosTheme.tint, 17.dp)
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = SfStyle(17.sp, 22.sp, tracking = (-0.43).sp), color = IosTheme.tint)
     }
 }
