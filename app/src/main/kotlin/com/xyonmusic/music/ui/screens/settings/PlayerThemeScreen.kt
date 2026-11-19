@@ -147,7 +147,6 @@ private val PresetCardWidth = 148.dp
 
 private enum class PlayerDesignPreset { CARD, VINYL, APPLE_MUSIC, APPLE_MUSIC_V2 }
 
-
 /**
  * Player theme picker: preset cards that render a live miniature of the real
  * player, so the artwork shape, background and seek bar are chosen by looking
@@ -673,80 +672,6 @@ private fun LockedNote(text: String) {
         color = AppTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp),
     )
-}
-
-/**
- * Drag-to-reorder list of [PlayerSlot]s, rendered as a miniature of the real
- * Now Playing screen — each slot is its actual visual shape (artwork square,
- * title/artist bars, seek bar, transport row, action row) rather than a
- * settings-style text row, so the builder shows what the layout will look
- * like instead of naming it. A switch on each hideable block toggles it off;
- * [PlayerSlot.CONTROLS] is reorder-only, no toggle, since playback needs it.
- */
-@Composable
-private fun PlayerLayoutList(
-    slots: MutableList<PlayerSlot>,
-    hiddenSlots: Set<PlayerSlot>,
-    artworkUrl: String?,
-    onReordered: (List<PlayerSlot>) -> Unit,
-    onVisibilityChange: (PlayerSlot, Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val lazyListState = rememberLazyListState()
-    var hasDragged by remember { mutableStateOf(false) }
-    val reorderableState = rememberReorderableLazyListState(
-        lazyListState = lazyListState,
-    ) { from, to ->
-        val movedItem = slots.removeAt(from.index)
-        slots.add(to.index, movedItem)
-        hasDragged = true
-    }
-
-    LaunchedEffect(reorderableState.isAnyItemDragging) {
-        if (!reorderableState.isAnyItemDragging && hasDragged) {
-            onReordered(slots.toList())
-            hasDragged = false
-        }
-    }
-
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = AppTheme.colorScheme.surfaceContainerHigh,
-        modifier = modifier,
-    ) {
-        LazyColumn(
-            state = lazyListState,
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            itemsIndexed(slots, key = { _, slot -> slot.name }) { _, slot ->
-                ReorderableItem(state = reorderableState, key = slot.name) {
-                    val isHidden = slot in hiddenSlots
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .alpha(if (isHidden) 0.4f else 1f)
-                            .clip(RoundedCornerShape(14.dp))
-                            .background(AppTheme.colorScheme.surfaceContainerLowest)
-                            .draggableHandle()
-                            .padding(10.dp),
-                    ) {
-                        SlotPreviewBlock(slot = slot, artworkUrl = artworkUrl)
-
-                        if (slot.hideable) {
-                            Switch(
-                                checked = !isHidden,
-                                onCheckedChange = { visible -> onVisibilityChange(slot, !visible) },
-                                modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .scale(0.7f)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 /** One slot's actual visual shape, at reduced scale, standing in for its real Now Playing section. */

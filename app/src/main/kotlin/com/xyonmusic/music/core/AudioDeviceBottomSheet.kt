@@ -568,7 +568,6 @@ fun AudioDeviceMenu(onDismiss: () -> Unit, modifier: Modifier = Modifier) {
                         }
                     }
 
-
                     AudioQualitySelector(context)
 
                     Spacer(modifier = Modifier.height(24.dp))
@@ -1213,47 +1212,3 @@ private fun AudioDeviceRow(
     }
 }
 
-@Composable
-fun DeviceSelector(
-    devices: List<AudioDevice>,
-    onDeviceSelect: (AudioDevice) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    androidx.compose.foundation.layout.FlowRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(ButtonGroupDefaults.ConnectedSpaceBetween),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
-        devices.forEach { device ->
-            val isSelected = device.isActive
-            val deviceIcon = audioDeviceSymbol(device.name, device.type)
-
-            ToggleButton(
-                checked = isSelected,
-                onCheckedChange = { if (!isSelected) onDeviceSelect(device) },
-                modifier = Modifier
-                    .weight(1f)
-                    .semantics { role = Role.RadioButton }
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    SymbolIcon(
-                        symbol = sf(deviceIcon),
- bounceOnEnter = true,
- bounceOnChange = true,
-                        contentDescription = null,
- size = 18.dp
-                    )
-                    Text(
-                        text = if (device.type == AudioDeviceType.PHONE_SPEAKER) stringResource(R.string.this_phone) else device.name,
-                        style = AppTheme.typography.labelLarge,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-        }
-    }
-}

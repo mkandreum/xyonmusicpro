@@ -748,6 +748,7 @@ fun BottomSheetPlayer(
         }
     }
 
+    val downloadActions = LocalDownloadUtil.current.get()
     val download by LocalDownloadUtil.current.get().getDownload(mediaMetadata?.id ?: "")
         .collectAsStateWithLifecycle(initialValue =null)
 
@@ -2057,29 +2058,13 @@ fun BottomSheetPlayer(
                                     onClick = {
                                         when (download?.state) {
                                             Download.STATE_COMPLETED, Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
-                                                DownloadService.sendRemoveDownload(
-                                                    context,
-                                                    ExoDownloadService::class.java,
-                                                    mediaMetadata.id,
-                                                    false,
-                                                )
+                                                com.xyonmusic.music.playback.removeDownloads(context, listOf(mediaMetadata.id))
                                             }
                                             else -> {
                                                 database.transaction {
                                                     insert(mediaMetadata)
                                                 }
-                                                val downloadRequest =
-                                                    DownloadRequest
-                                                        .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
-                                                        .setCustomCacheKey(mediaMetadata.id)
-                                                        .setData(mediaMetadata.title.toByteArray())
-                                                        .build()
-                                                DownloadService.sendAddDownload(
-                                                    context,
-                                                    ExoDownloadService::class.java,
-                                                    downloadRequest,
-                                                    false,
-                                                )
+                                                com.xyonmusic.music.playback.downloadSongs(context, listOf(com.xyonmusic.music.playback.DownloadTarget(mediaMetadata.id, mediaMetadata.title, mediaMetadata.artists.firstOrNull()?.name, mediaMetadata.duration)), downloadActions.downloads.value)
                                             }
                                         }
                                     },
@@ -3517,52 +3502,6 @@ fun InlineLyricsView(
     }
 }
 
-
-@Composable
-fun MoreActionsButton(
-    mediaMetadata: MediaMetadata,
-    navController: NavController,
-    state: BottomSheetState,
-    textButtonColor: Color,
-    iconButtonColor: Color
-) {
-    val menuState = LocalMenuState.current
-    val bottomSheetPageState = LocalBottomSheetPageState.current
-
-    Box(
-        modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(24.dp))
-            .background(textButtonColor)
-            .clickable {
-                menuState.show {
-                    PlayerMenu(
-                        mediaMetadata = mediaMetadata,
-                        navController = navController,
-                        playerBottomSheetState = state,
-                        onShowDetailsDialog = {
-                            mediaMetadata.id.let {
-                                bottomSheetPageState.showFloating {
-                                    ShowMediaInfo(it)
-                                }
-                            }
-                        },
-                        onDismiss = menuState::dismiss
-                    )
-                }
-            }
-    ) {
-        // Routed through PlayerGlyph like every other control: this one drew the stock
-        // glyph straight from resources, so the More slot in player-icon settings did
-        // nothing here even though the sibling PlayerMoreMenuButton honoured it.
-        PlayerGlyph(
-            slot = PlayerIconSlot.MORE,
-            fallback = R.drawable.more_horiz,
-            tint = iconButtonColor,
-        )
-    }
-}
-
 @Composable
 private fun PlayerMoreMenuButton(
     mediaMetadata: MediaMetadata,
@@ -3761,7 +3700,6 @@ private fun BackgroundVideoView(
         modifier = modifier.graphicsLayer { this.alpha = alpha; clip = true }
     )
 }
-
 
 /**
  * The z >= 0 sticker band as part of the player, not floating over it: while the morph owns

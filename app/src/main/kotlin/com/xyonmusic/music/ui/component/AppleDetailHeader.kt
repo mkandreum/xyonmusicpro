@@ -251,13 +251,3 @@ fun DetailActionRow(
     }
 }
 
-/** True when a local file or enabled Tidal streaming can provide lossless audio. */
-@Composable
-fun rememberLosslessBadge(localSongId: String?): Boolean {
-    val tidalLossless by rememberPreference(EnableTidalStreamingKey, defaultValue = false)
-    val context = LocalContext.current
-    val localIsLossless by produceState(false, localSongId) {
-        value = localSongId?.let { readLocalAudioProperties(context, it)?.isLossless } == true
-    }
-    return tidalLossless || localIsLossless
-}

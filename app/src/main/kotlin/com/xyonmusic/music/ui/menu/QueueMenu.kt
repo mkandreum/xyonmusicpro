@@ -102,6 +102,7 @@ fun QueueMenu(
     val syncUtils = LocalSyncUtils.current.get()
 
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
+    val downloadActions = LocalDownloadUtil.current.get()
     val download by LocalDownloadUtil.current.get().getDownload(mediaMetadata.id)
         .collectAsState(initial = null)
 
@@ -332,29 +333,19 @@ fun QueueMenu(
                                     SymbolIcon(symbol = sf("arrow.down.circle"), contentDescription = null, size = 24.dp)
                                 },
                                 onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        mediaMetadata.id,
-                                        false,
-                                    )
+                                    com.xyonmusic.music.playback.removeDownloads(context, listOf(mediaMetadata.id))
                                 }
                             )
                         }
 
                         Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
                             IosMenuItemData(
-                                title = { Text(text = stringResource(R.string.downloading)) },
+                                title = { Text(text = stringResource(R.string.cancel_download)) },
                                 icon = {
                                     DownloadRingIcon(download)
                                 },
                                 onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        mediaMetadata.id,
-                                        false,
-                                    )
+                                    com.xyonmusic.music.playback.cancelDownload(context, mediaMetadata.id, downloadActions.downloads.value)
                                 }
                             )
                         }
@@ -370,18 +361,7 @@ fun QueueMenu(
                                     database.transaction {
                                         insert(mediaMetadata)
                                     }
-                                    val downloadRequest =
-                                        DownloadRequest
-                                            .Builder(mediaMetadata.id, mediaMetadata.id.toUri())
-                                            .setCustomCacheKey(mediaMetadata.id)
-                                            .setData(mediaMetadata.title.toByteArray())
-                                            .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
+                                    com.xyonmusic.music.playback.downloadSongs(context, listOf(com.xyonmusic.music.playback.DownloadTarget(mediaMetadata.id, mediaMetadata.title, mediaMetadata.artists.firstOrNull()?.name, mediaMetadata.duration)), downloadActions.downloads.value)
                                 }
                             )
                         }

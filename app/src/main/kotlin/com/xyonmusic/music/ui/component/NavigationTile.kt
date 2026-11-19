@@ -25,38 +25,3 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 
-@Composable
-fun NavigationTile(
-    title: String,
-    @DrawableRes icon: Int,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        modifier = modifier.padding(6.dp),
-    ) {
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier =
-            Modifier
-                .size(56.dp)
-                .clip(CircleShape)
-                .background(AppTheme.colorScheme.surfaceContainer)
-                .clickable(onClick = onClick),
-        ) {
-            Icon(
-                painter = painterResource(icon),
-                contentDescription = null,
-            )
-        }
-
-        Text(
-            text = title,
-            style = AppTheme.typography.labelMedium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-    }
-}

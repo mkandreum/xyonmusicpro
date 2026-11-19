@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.media3.exoplayer.offline.Download
 import com.xyonmusic.music.LocalDatabase
-import com.xyonmusic.music.LocalDownloadUtil
 import com.xyonmusic.music.constants.GridCardArtShape
 import com.xyonmusic.music.constants.ListRowArtShape
 import com.xyonmusic.music.constants.ListThumbnailSize
@@ -117,8 +116,6 @@ fun YouTubeListItem(
         }
         if (item.explicit) Icon.Explicit()
         if (item is SongItem) {
-            // Flow is remembered; collectAsState is composable and stays outside.
-            val downloadUtil = LocalDownloadUtil.current.get()
             val download = LocalDownloads.current[item.id]
             Icon.Download(download?.state)
         }
@@ -221,8 +218,6 @@ fun YouTubeGridItem(
         }
         if (item.explicit) Icon.Explicit()
         if (item is SongItem) {
-            // Flow is remembered; collectAsState is composable and stays outside.
-            val downloadUtil = LocalDownloadUtil.current.get()
             val download = LocalDownloads.current[item.id]
             Icon.Download(download?.state)
         }

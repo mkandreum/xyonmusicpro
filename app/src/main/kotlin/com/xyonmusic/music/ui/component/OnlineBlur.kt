@@ -19,36 +19,3 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import com.xyonmusic.music.ui.utils.fadingEdge
 
-@Composable
-fun OnlineBlur(
-    thumbnailUrl: String?,
-    modifier: Modifier = Modifier,
-) {
-    Box(modifier = modifier) {
-        if (thumbnailUrl != null) {
-            AsyncImage(
-                model = thumbnailUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .blur(50.dp)
-                    .fadingEdge(bottom = 200.dp)
-            )
-        }
-        
-        // Shadow/Gradient overlay for "face upward" effect to blend with background
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            AppTheme.colorScheme.surface.copy(alpha = 0.6f)
-                        )
-                    )
-                )
-        )
-    }
-}

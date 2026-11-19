@@ -35,10 +35,12 @@ class ExoDownloadService : DownloadService(
     lateinit var downloadUtil: DownloadUtil
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        if (intent?.action == REMOVE_ALL_PENDING_DOWNLOADS) {
-            downloadManager.currentDownloads.forEach { download ->
-                downloadManager.removeDownload(download.request.id)
-            }
+        // The notification's cancel stops only what is downloading right now: queued songs keep
+        // their place and completed ones are never touched.
+        if (intent?.action == CANCEL_ACTIVE_DOWNLOADS) {
+            downloadManager.currentDownloads
+                .filter { it.state == Download.STATE_DOWNLOADING }
+                .forEach { downloadManager.removeDownload(it.request.id) }
         }
         return super.onStartCommand(intent, flags, startId)
     }
@@ -69,7 +71,7 @@ class ExoDownloadService : DownloadService(
                     this,
                     0,
                     Intent(this, ExoDownloadService::class.java).setAction(
-                        REMOVE_ALL_PENDING_DOWNLOADS
+                        CANCEL_ACTIVE_DOWNLOADS
                     ),
                     PendingIntent.FLAG_IMMUTABLE
                 )
@@ -106,6 +108,6 @@ class ExoDownloadService : DownloadService(
         const val CHANNEL_ID = "download"
         const val NOTIFICATION_ID = 1
         const val JOB_ID = 1
-        const val REMOVE_ALL_PENDING_DOWNLOADS = "REMOVE_ALL_PENDING_DOWNLOADS"
+        const val CANCEL_ACTIVE_DOWNLOADS = "CANCEL_ACTIVE_DOWNLOADS"
     }
 }

@@ -213,7 +213,8 @@ private fun IosMenuSeparator(menuColors: IosMenuColors) {
     Box(
         Modifier
             .fillMaxWidth()
-            .height(21.dp)
+            // iOS keeps a slim gap between groups; 21dp per divider made long menus overflow.
+            .height(9.dp)
             .padding(horizontal = IosMenuMaterial.SeparatorInset),
         contentAlignment = Alignment.Center,
     ) {
@@ -308,36 +309,6 @@ private fun IosMenuRow(
                     color = menuColors.secondaryLabel,
                     style = IosTheme.typography.footnote,
                 )
-            }
-        }
-    }
-}
-
-/**
- * Anchors a menu to [content], opening it below on tap — SwiftUI's Menu.
- */
-@Composable
-fun IosMenuAnchor(
-    sections: List<IosMenuSection>,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Box(modifier) {
-        Box(Modifier.clickable { onExpandedChange(true) }) { content() }
-
-        if (expanded) {
-            Popup(
-                onDismissRequest = { onExpandedChange(false) },
-                properties = PopupProperties(focusable = true),
-            ) {
-                CompositionLocalProvider(
-                    LocalIosTextStyle provides IosTheme.typography.body,
-                    LocalIosContentColor provides IosMenuMaterial.colors.label,
-                ) {
-                    IosMenu(sections, onDismissRequest = { onExpandedChange(false) })
-                }
             }
         }
     }

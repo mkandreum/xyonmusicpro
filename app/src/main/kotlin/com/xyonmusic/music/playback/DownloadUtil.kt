@@ -175,10 +175,12 @@ constructor(
                 .setCache(playerCache)
                 .setUpstreamDataSourceFactory(
                     DataSource.Factory {
-                        HlsJoinDataSource(
-                            YTPlayerUtils.httpClient,
-                            RangedUpstreamDataSource(OkHttpDataSource.Factory(YTPlayerUtils.httpClient)),
-                        )
+                        ExpiredUrlGuard(
+                            HlsJoinDataSource(
+                                YTPlayerUtils.httpClient,
+                                RangedUpstreamDataSource(OkHttpDataSource.Factory(YTPlayerUtils.httpClient)),
+                            ),
+                        ) { key -> songUrlCache.remove(key.substringBefore('#')); songUrlCache.remove(key) }
                     },
                 ),
         ) { dataSpec ->
@@ -203,8 +205,10 @@ constructor(
             else saveResolvedMetadata(mediaId, playbackData)
             val streamUrl = downloadStreamUrl(playbackData)
 
-            songUrlCache[mediaId] =
-                streamUrl to System.currentTimeMillis() + (playbackData.streamExpiresInSeconds * 1000L)
+            // Drop the URL a while before Google does: a long download started near expiry
+            // would otherwise get a 403 halfway through.
+            val lifetimeMs = (playbackData.streamExpiresInSeconds * 1000L - URL_EXPIRY_MARGIN_MS).coerceAtLeast(0L)
+            songUrlCache[mediaId] = streamUrl to System.currentTimeMillis() + lifetimeMs
             dataSpec.withStream(streamUrl)
         }
 
@@ -355,6 +359,9 @@ constructor(
             ),
         ).apply {
             maxParallelDownloads = 3
+            // Each retry re-resolves the stream once ExpiredUrlGuard drops a rejected URL, and
+            // resumes from the bytes already cached.
+            minRetryCount = 6
             addListener(
                 ExoDownloadService.TerminalStateNotificationHelper(
                     context,
@@ -397,6 +404,7 @@ constructor(
                         val shared = download.request.storageKey() != download.request.id
                         when (download.state) {
                             Download.STATE_COMPLETED -> scope.launch {
+                                ensureSongRow(download)
                                 database.updateDownloadedInfo(download.request.id, true, LocalDateTime.now())
                                 // A downloaded song also joins the Songs list (newest first).
                                 database.addToLibraryIfMissing(download.request.id, System.currentTimeMillis())
@@ -451,6 +459,16 @@ constructor(
 
     /** The storage key a song plays from: its own id unless its download shares another song's file. */
     fun cacheKeyFor(songId: String): String = _downloads.value[songId]?.request?.storageKey() ?: songId
+
+    /**
+     * A song served from cache never runs the resolver that writes its row, so without this the
+     * download would finish with nothing to show in the Songs list.
+     */
+    private fun ensureSongRow(download: Download) {
+        val id = download.request.id
+        if (database.getSongByIdBlocking(id) != null) return
+        database.insert(SongEntity(id = id, title = Util.fromUtf8Bytes(download.request.data).ifBlank { "Unknown" }))
+    }
 
     private suspend fun registerDuplicate(songId: String) {
         val song = database.song(songId).first() ?: return
@@ -529,6 +547,39 @@ constructor(
 
     fun release() {
         scope.cancel()
+    }
+}
+
+/** How long before Google's stated expiry a resolved stream URL stops being reused. */
+private const val URL_EXPIRY_MARGIN_MS = 10 * 60 * 1000L
+
+/**
+ * googlevideo answers 403 (or 410) when a signed URL expired, was bound to another client or
+ * only covered part of the file. The URL is then useless: [onRejected] drops it so the
+ * DownloadManager's next retry resolves a fresh one instead of failing on the same URL.
+ */
+@UnstableApi
+internal class ExpiredUrlGuard(
+    private val upstream: DataSource,
+    private val onRejected: (String) -> Unit,
+) : DataSource by upstream {
+    private var key: String? = null
+
+    override fun open(dataSpec: DataSpec): Long {
+        key = dataSpec.key
+        return guard { upstream.open(dataSpec) }
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int = guard { upstream.read(buffer, offset, length) }
+
+    private inline fun <T> guard(block: () -> T): T = try {
+        block()
+    } catch (error: java.io.IOException) {
+        val code = generateSequence<Throwable>(error) { it.cause }
+            .filterIsInstance<androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException>()
+            .firstOrNull()?.responseCode
+        if (code == 403 || code == 410) key?.let(onRejected)
+        throw error
     }
 }
 

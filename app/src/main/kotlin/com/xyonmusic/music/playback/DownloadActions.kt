@@ -109,14 +109,6 @@ fun downloadSongs(
 }
 
 @UnstableApi
-fun downloadSong(
-    context: Context,
-    id: String,
-    title: String,
-    downloads: Map<String, Download>,
-) = downloadSongs(context, listOf(DownloadTarget(id, title)), downloads)
-
-@UnstableApi
 fun cancelDownloads(
     context: Context,
     ids: List<String>,
@@ -128,6 +120,11 @@ fun cancelDownloads(
         DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, id, false)
     }
 }
+
+/** Cancels one unfinished download; the rest of the queue keeps going. */
+@UnstableApi
+fun cancelDownload(context: Context, id: String, downloads: Map<String, Download>) =
+    cancelDownloads(context, listOf(id), downloads)
 
 @UnstableApi
 fun removeDownloads(

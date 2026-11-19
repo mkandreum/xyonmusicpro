@@ -170,16 +170,3 @@ fun Modifier.iosGlass(
         .then(if (interactive) highlight.modifier.then(highlight.gestureModifier) else Modifier)
 }
 
-/** The label colour that stays legible on a glass surface of this [style]. */
-@Composable
-fun iosGlassContentColor(style: IosGlassStyle, tint: Color = Color.Unspecified): Color {
-    val colors = IosTheme.colors
-    return when (style) {
-        IosGlassStyle.Prominent -> Color.White
-        IosGlassStyle.Regular -> com.xyonmusic.music.ui.theme.GlassTintTokens.glassContentColor(
-            isDark = colors.isDark,
-            activeTint = tint,
-            isSelected = false,
-        )
-    }
-}

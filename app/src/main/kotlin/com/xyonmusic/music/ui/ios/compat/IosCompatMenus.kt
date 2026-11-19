@@ -26,6 +26,10 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -49,7 +53,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.PopupProperties
 import com.xyonmusic.music.ui.ios.foundation.IosMetrics
 import androidx.compose.runtime.compositionLocalOf
-import android.os.Build
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.rememberTransition
@@ -59,7 +62,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalDensity
@@ -158,7 +160,11 @@ fun DropdownMenu(
     // The popup window clips whatever it draws; the panel's 40dp shadow needs room
     // inside it, or it ends in a hard rectangle.
     val roomPx = with(density) { ShadowRoom.roundToPx() }
-    val blurPx = with(density) { 20.dp.toPx() }
+    // Long menus (a song's) scroll inside the screen instead of running off it.
+    val maxPanelHeight = with(density) {
+        (androidx.compose.ui.platform.LocalWindowInfo.current.containerSize.height.toDp() - 12.dp * 2 - ShadowRoom * 2)
+            .coerceAtLeast(120.dp)
+    }
     // Anchor rect relative to the popup: written by the position provider, read by the layer.
     val anchorInPopup = remember { floatArrayOf(0f, 0f, 1f, 1f) }
     val provider = remember(marginPx, roomPx) {
@@ -218,7 +224,9 @@ fun DropdownMenu(
                 modifier = modifier
                     .graphicsLayer {
                         val p = progress.value
-                        alpha = (p / 0.35f).coerceIn(0f, 1f)
+                        // Closing fades with the shrink, so the panel never flattens into a line.
+                        val shrink = if (transition.targetState) 1f else minOf(growX.value, growY.value)
+                        alpha = (p / 0.35f).coerceIn(0f, 1f) * shrink
                         val sx = (anchorInPopup[2] / size.width).coerceIn(0.08f, 1f)
                         val sy = (anchorInPopup[3] / size.height).coerceIn(0.08f, 1f)
                         scaleX = sx + (1f - sx) * growX.value
@@ -227,14 +235,12 @@ fun DropdownMenu(
                             (anchorInPopup[0] / size.width).coerceIn(0f, 1f),
                             (anchorInPopup[1] / size.height).coerceIn(0f, 1f),
                         )
-                        val r = if (transition.targetState) blurPx * (1f - minOf(growX.value, growY.value)).coerceIn(0f, 1f) else 0f
-                        if (r > 0.01f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                            renderEffect = BlurEffect(r, r)
-                        }
                     }
                     .width(IosMenuMaterial.Width)
+                    .heightIn(max = maxPanelHeight)
                     .then(surfaceModifier ?: Modifier.iosMenuSurface(IosMenuMaterial.PanelShape, bloom))
                     .menuVibrancy()
+                    .verticalScroll(rememberScrollState())
                     .padding(vertical = 10.dp),
             ) { content() }
             }
@@ -283,7 +289,7 @@ fun Modifier.menuTrigger(onOpen: () -> Unit): Modifier = composed {
     val open by rememberUpdatedState(onOpen)
     val coords = remember { arrayOfNulls<LayoutCoordinates>(1) }
     this
-        .onGloballyPositioned { coords[0] = it }
+        .onPlaced { coords[0] = it }
         .pointerInput(Unit) {
             awaitEachGesture {
                 val down = awaitFirstDown()

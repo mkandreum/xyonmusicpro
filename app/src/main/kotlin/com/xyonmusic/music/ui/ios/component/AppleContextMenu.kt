@@ -5,7 +5,6 @@
 
 package com.xyonmusic.music.ui.ios.component
 
-import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.Transition
@@ -40,7 +39,6 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -49,7 +47,7 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.boundsInWindow
-import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.Constraints
@@ -93,11 +91,11 @@ fun AppleContextMenu(
     val menu = controller?.state ?: remember { AppleContextMenuState() }
     // A plain holder, not state: written on every layout (every scrolled frame), read only
     // when the overlay composes on open — as state it recomposed every tile per frame.
-    val anchor = remember { arrayOf(Rect.Zero) }
+    val anchor = remember { arrayOfNulls<androidx.compose.ui.layout.LayoutCoordinates>(1) }
 
     Box(
         modifier = modifier
-            .onGloballyPositioned { anchor[0] = it.boundsInWindow() }
+            .onPlaced { anchor[0] = it }
             .graphicsLayer {
                 val s = 1f - (1f - PressScale) * menu.press.value
                 scaleX = s
@@ -166,7 +164,7 @@ fun AppleContextMenu(
 
     AppleContextMenuOverlay(
         menu = menu,
-        anchorOf = { anchor[0] },
+        anchorOf = { anchor[0]?.takeIf { it.isAttached }?.boundsInWindow() ?: Rect.Zero },
         sections = sections,
         quickActions = quickActions,
         preview = preview,
@@ -337,14 +335,12 @@ private fun AppleContextMenuOverlay(
                                 val x = mx.value
                                 val y = my.value
                                 val dragFade = 1f - (menu.drag.value.getDistance() / menuFadePx).coerceIn(0f, 1f)
-                                alpha = (p.value * 3f).coerceIn(0f, 1f) * dragFade
+                                // Closing fades with the shrink, so it never flattens into a line.
+                                val shrink = if (transition.targetState) 1f else minOf(x, y)
+                                alpha = (p.value * 3f).coerceIn(0f, 1f) * dragFade * shrink
                                 scaleX = 0.25f + 0.75f * x
                                 scaleY = 0.08f + 0.92f * y
                                 transformOrigin = TransformOrigin(if (menu.rightSide) 1f else 0f, 0f)
-                                val r = if (transition.targetState) 20.dp.toPx() * (1f - minOf(x, y)).coerceIn(0f, 1f) else 0f
-                                if (r > 0.01f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                                    renderEffect = BlurEffect(r, r)
-                                }
                             },
                         ) {
                             IosMenu(
@@ -362,7 +358,10 @@ private fun AppleContextMenuOverlay(
                     val top = statusTop.roundToPx() + 8.dp.roundToPx()
                     val bottom = h - navBottom.roundToPx() - 16.dp.roundToPx()
 
-                    val menuPlaceable = measurables[1].measure(Constraints())
+                    // The menu gets what is left after a usable preview; past that it scrolls.
+                    val minCard = 160.dp.roundToPx()
+                    val menuMax = (bottom - top - gap - minCard).coerceAtLeast(120.dp.roundToPx())
+                    val menuPlaceable = measurables[1].measure(Constraints(maxHeight = menuMax))
                     // Card ~78% of the width (reference), shrunk if card + menu can't fit.
                     val textBlock = 76.dp.roundToPx()
                     val ideal = minOf((w * 0.78f).roundToInt(), 340.dp.roundToPx())

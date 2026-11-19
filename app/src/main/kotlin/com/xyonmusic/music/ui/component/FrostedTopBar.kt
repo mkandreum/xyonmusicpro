@@ -234,52 +234,6 @@ fun FrostedTopBar(
 }
 
 /**
- * The account affordance at the right end of the bar — the signed-in
- * account's own photo, falling back to a person glyph on a filled circle so
- * the tap target never disappears while the account menu hasn't loaded yet.
- *
- * The hairline ring is what keeps a photo with light edges from dissolving
- * into the bar's glass.
- */
-@Composable
-fun TopBarAccountButton(
-    photoUrl: String?,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    GlassCircleButton(
-        onClick = onClick,
-        modifier = modifier,
-        size = 36.dp,
-        // Account photo, not an icon — additive would wash it out.
-        applyAdditiveChrome = false,
-    ) {
-        if (photoUrl != null) {
-            AsyncImage(
-                model = photoUrl,
-                contentDescription = "Settings",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .size(AVATAR_SIZE)
-                    .clip(CircleShape)
-                    .border(0.5.dp, AppTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape),
-            )
-        } else {
-            Box(
-                modifier = Modifier
-                    .size(AVATAR_SIZE)
-                    .clip(CircleShape)
-                    .background(AppTheme.colorScheme.surfaceVariant)
-                    .border(0.5.dp, AppTheme.colorScheme.outline.copy(alpha = 0.3f), CircleShape),
-                contentAlignment = Alignment.Center,
-            ) {
-                SymbolIcon(symbol = sf("person.fill"), contentDescription = "Settings", size = 18.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-/**
  * The refresh indicator: a line along the bottom of the bar, directly under
  * the status bar. It tracks the drag on the way down, then sweeps
  * indefinitely once the refresh is away, so the two phases read as one

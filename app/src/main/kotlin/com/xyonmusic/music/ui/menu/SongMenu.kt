@@ -716,17 +716,12 @@ fun SongMenu(
                         }
                         Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
                             IosMenuItemData(
-                                title = { Text(text = stringResource(R.string.downloading)) },
+                                title = { Text(text = stringResource(R.string.cancel_download)) },
                                 icon = {
                                     DownloadRingIcon(download)
                                 },
                                 onClick = {
-                                    DownloadService.sendRemoveDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        song.id,
-                                        false,
-                                    )
+                                    com.xyonmusic.music.playback.cancelDownload(context, song.id, downloadUtil.downloads.value)
                                 }
                             )
                         }
@@ -738,18 +733,7 @@ fun SongMenu(
                                     SymbolIcon(symbol = sf("exclamationmark.circle"), contentDescription = null, tint = AppTheme.colorScheme.error)
                                 },
                                 onClick = {
-                                    val downloadRequest =
-                                        DownloadRequest
-                                            .Builder(song.id, song.id.toUri())
-                                            .setCustomCacheKey(song.id)
-                                            .setData(song.song.title.toByteArray())
-                                            .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
+                                    com.xyonmusic.music.playback.downloadSongs(context, listOf(com.xyonmusic.music.playback.DownloadTarget(song.id, song.song.title, song.artists.firstOrNull()?.name, song.song.duration)), downloadUtil.downloads.value)
                                 }
                             )
                         }
@@ -761,18 +745,7 @@ fun SongMenu(
                                     SymbolIcon(symbol = sf("arrow.down.circle"), contentDescription = null)
                                 },
                                 onClick = {
-                                    val downloadRequest =
-                                        DownloadRequest
-                                            .Builder(song.id, song.id.toUri())
-                                            .setCustomCacheKey(song.id)
-                                            .setData(song.song.title.toByteArray())
-                                            .build()
-                                    DownloadService.sendAddDownload(
-                                        context,
-                                        ExoDownloadService::class.java,
-                                        downloadRequest,
-                                        false,
-                                    )
+                                    com.xyonmusic.music.playback.downloadSongs(context, listOf(com.xyonmusic.music.playback.DownloadTarget(song.id, song.song.title, song.artists.firstOrNull()?.name, song.song.duration)), downloadUtil.downloads.value)
                                 }
                             )
                         }

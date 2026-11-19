@@ -229,45 +229,6 @@ fun SwitchPreference(
     )
 }
 
-@Composable
-fun EditTextPreference(
-    modifier: Modifier = Modifier,
-    title: @Composable () -> Unit,
-    icon: (@Composable () -> Unit)? = null,
-    value: String,
-    onValueChange: (String) -> Unit,
-    singleLine: Boolean = true,
-    isInputValid: (String) -> Boolean = { it.isNotEmpty() },
-    isEnabled: Boolean = true,
-) {
-    var showDialog by remember {
-        mutableStateOf(false)
-    }
-
-    if (showDialog) {
-        TextFieldDialog(
-            initialTextFieldValue =
-            TextFieldValue(
-                text = value,
-                selection = TextRange(value.length),
-            ),
-            singleLine = singleLine,
-            isInputValid = isInputValid,
-            onDone = onValueChange,
-            onDismiss = { showDialog = false },
-        )
-    }
-
-    PreferenceEntry(
-        modifier = modifier,
-        title = title,
-        description = value,
-        icon = icon,
-        onClick = { showDialog = true },
-        isEnabled = isEnabled,
-    )
-}
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SliderPreference(

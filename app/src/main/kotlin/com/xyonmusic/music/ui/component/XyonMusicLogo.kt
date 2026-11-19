@@ -18,18 +18,3 @@ import androidx.compose.ui.unit.dp
 import com.xyonmusic.music.R
 import com.xyonmusic.music.ui.ios.compat.AppTheme
 
-/**
- * The XyonMusic monogram, black on a light theme and white on a dark one. Neutral on
- * purpose: it never takes the artwork-derived accent, so the brand mark reads the
- * same on every screen.
- */
-@Composable
-fun XyonMusicLogo(modifier: Modifier = Modifier, size: Dp = 20.dp) {
-    val isDark = AppTheme.colorScheme.surface.luminance() <= 0.5f
-    Image(
-        painter = painterResource(R.drawable.xyonmusic_logo),
-        contentDescription = null,
-        colorFilter = ColorFilter.tint(if (isDark) Color.White else Color.Black),
-        modifier = modifier.size(size),
-    )
-}

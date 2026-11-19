@@ -107,6 +107,7 @@ fun OldPlayerMenu(
     val castVolume by castHandler?.castVolume?.collectAsStateWithLifecycle() ?: remember { mutableFloatStateOf(1f) }
     val castDeviceName by castHandler?.castDeviceName?.collectAsStateWithLifecycle() ?: remember { mutableStateOf<String?>(null) }
 
+    val downloadActions = LocalDownloadUtil.current.get()
     val download by LocalDownloadUtil.current.get().getDownload(mediaMetadata.id).collectAsState(initial = null)
 
     val listenTogetherManager = LocalListenTogetherManager.current
@@ -314,7 +315,7 @@ fun OldPlayerMenu(
                                         SymbolIcon(symbol = sf("arrow.down.circle"), contentDescription = null, size = 24.dp)
                                     },
                                     onClick = {
-                                        DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, mediaMetadata.id, false)
+                                        com.xyonmusic.music.playback.removeDownloads(context, listOf(mediaMetadata.id))
                                         onDismiss()
                                     }
                                 )
@@ -323,12 +324,12 @@ fun OldPlayerMenu(
                         Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> {
                             add(
                                 IosMenuItemData(
-                                    title = { Text(stringResource(R.string.downloading)) },
+                                    title = { Text(stringResource(R.string.cancel_download)) },
                                     icon = {
                                         DownloadRingIcon(download)
                                     },
                                     onClick = {
-                                        DownloadService.sendRemoveDownload(context, ExoDownloadService::class.java, mediaMetadata.id, false)
+                                        com.xyonmusic.music.playback.cancelDownload(context, mediaMetadata.id, downloadActions.downloads.value)
                                         onDismiss()
                                     }
                                 )
@@ -343,11 +344,7 @@ fun OldPlayerMenu(
                                     },
                                     onClick = {
                                         database.transaction { insert(mediaMetadata) }
-                                        val downloadRequest = DownloadRequest.Builder(mediaMetadata.id, mediaMetadata.id.toUri())
-                                            .setCustomCacheKey(mediaMetadata.id)
-                                            .setData(mediaMetadata.title.toByteArray())
-                                            .build()
-                                        DownloadService.sendAddDownload(context, ExoDownloadService::class.java, downloadRequest, false)
+                                        com.xyonmusic.music.playback.downloadSongs(context, listOf(com.xyonmusic.music.playback.DownloadTarget(mediaMetadata.id, mediaMetadata.title, mediaMetadata.artists.firstOrNull()?.name, mediaMetadata.duration)), downloadActions.downloads.value)
                                         onDismiss()
                                     }
                                 )

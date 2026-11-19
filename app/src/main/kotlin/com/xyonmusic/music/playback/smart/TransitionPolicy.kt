@@ -124,17 +124,6 @@ fun isVocalClash(outgoingActivity: Double?, incomingActivity: Double?): Boolean 
         incomingActivity >= VOCAL_ACTIVE_THRESHOLD
 
 /**
- * Returns a graded vocal-clash amount for rendering. It uses the quieter side so
- * one vocal over an instrumental is not treated as a clash. Missing masks return 0.
- */
-fun vocalOverlapAmount(outgoingActivity: Double?, incomingActivity: Double?): Double {
-    if (outgoingActivity == null || incomingActivity == null) return 0.0
-    val both = min(outgoingActivity, incomingActivity)
-    if (both <= VOCAL_ACTIVE_THRESHOLD) return 0.0
-    return ((both - VOCAL_ACTIVE_THRESHOLD) / (1.0 - VOCAL_ACTIVE_THRESHOLD)).coerceIn(0.0, 1.0)
-}
-
-/**
  * Returns the fraction of the overlap where both tracks are singing, or null
  * when either track has no usable vocal mask.
  *

@@ -104,31 +104,10 @@ fun IosControlSize(size: IosControlSize, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalIosControlSize provides size, content = content)
 }
 
-/** SwiftUI's `.tint(_:)`. */
-@Composable
-fun IosTint(color: Color, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalIosTint provides color, content = content)
-}
-
 /** SwiftUI's `.font(_:)`, scoped to [content]. */
 @Composable
 fun IosFont(style: TextStyle, content: @Composable () -> Unit) {
     CompositionLocalProvider(LocalIosTextStyle provides style, content = content)
-}
-
-/** SwiftUI's `.foregroundStyle(_:)`, scoped to [content]. */
-@Composable
-fun IosForegroundStyle(color: Color, content: @Composable () -> Unit) {
-    CompositionLocalProvider(LocalIosContentColor provides color, content = content)
-}
-
-/** Declares the container radius children see through `ContainerRelativeShape`. */
-@Composable
-fun IosContainer(radius: Dp, content: @Composable () -> Unit) {
-    CompositionLocalProvider(
-        LocalIosContainerShape provides IosContainerShape(radius),
-        content = content,
-    )
 }
 
 /** Metrics shared across controls, at the values iOS 26 actually ships. */

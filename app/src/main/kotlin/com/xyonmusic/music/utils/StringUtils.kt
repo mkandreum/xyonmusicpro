@@ -24,11 +24,6 @@ fun makeTimeString(duration: Long?): String {
     }
 }
 
-fun md5(str: String): String {
-    val md = MessageDigest.getInstance("MD5")
-    return BigInteger(1, md.digest(str.toByteArray())).toString(16).padStart(32, '0')
-}
-
 fun joinByBullet(vararg str: String?) =
     str
         .filterNot {

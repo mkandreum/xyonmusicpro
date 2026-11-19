@@ -220,33 +220,6 @@ private const val WideWashStart = 0.55f
 /** Draws a cached progressive blur under a player artwork box. */
 internal val playerFootCache = android.util.LruCache<String, ImageBitmap>(6)
 
-@Composable
-fun BakedFootBlur(
-    artworkUrl: String?,
-    modifier: Modifier = Modifier,
-    fadeStart: Float = 0.50f,
-    fadeEnd: Float = 0.85f,
-) {
-    if (artworkUrl.isNullOrBlank()) return
-    val context = LocalContext.current
-    val foot by produceState(playerFootCache.get(artworkUrl), artworkUrl) {
-        if (value != null) return@produceState
-        value = withContext(Dispatchers.Default) {
-            runCatching { bakeArtistFoot(context, artworkUrl, extent = 1f) }.getOrNull()
-                ?.also { playerFootCache.put(artworkUrl, it) }
-        }
-    }
-    // Keep the blur aligned with the art and avoid a continuous animation when the player is idle.
-    foot?.let { baked ->
-        Image(
-            bitmap = baked,
-            contentDescription = null,
-            contentScale = ContentScale.FillBounds,
-            modifier = modifier.heroBandMask(fadeStart, fadeEnd),
-        )
-    }
-}
-
 /** Hero column height as a multiple of its width: the square photo plus the smeared tail below it. */
 const val ArtistHeroExtent = 495f / 393f
 internal const val ArtistArtworkExtent = 405f / 393f
