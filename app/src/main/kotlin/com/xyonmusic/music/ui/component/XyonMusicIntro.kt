@@ -69,7 +69,7 @@ fun XyonMusicIntro(onFinished: () -> Unit) {
                 last = now
                 clock.floatValue = after
                 if (BEATS_MS.any { it in before..after && it != before }) {
-                    view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+                    com.xyonmusic.music.utils.Haptics.mark(); view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
                 }
             }
         }

@@ -30,6 +30,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -53,6 +54,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -85,6 +87,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
@@ -92,7 +95,9 @@ import coil3.imageLoader
 import coil3.request.allowHardware
 import coil3.toBitmap
 import com.xyonmusic.music.LocalPlayerConnection
+import com.xyonmusic.music.constants.VocalSuppressionKey
 import com.xyonmusic.music.extensions.togglePlayPause
+import com.xyonmusic.music.jam.JamSession
 import com.xyonmusic.music.ui.component.BottomSheetState
 import com.xyonmusic.music.ui.component.LocalBottomSheetPageState
 import com.xyonmusic.music.ui.component.LocalMenuState
@@ -100,8 +105,11 @@ import com.xyonmusic.music.ui.component.Lyrics
 import com.xyonmusic.music.ui.component.expandedAnchor
 import com.xyonmusic.music.ui.component.rememberBottomSheetState
 import com.xyonmusic.music.ui.component.rememberNoArtworkPainter
+import com.xyonmusic.music.ui.feature.FeatureSheets
 import com.xyonmusic.music.ui.menu.PlayerMenu
 import com.xyonmusic.music.ui.utils.ShowMediaInfo
+import com.xyonmusic.music.utils.rememberPreference
+import com.xyonmusic.music.viewmodels.JamViewModel
 import io.github.mkandreum.liquidbar.LiquidGlassStyle
 import io.github.mkandreum.liquidbar.liquidGlass
 import io.github.mkandreum.liquidbar.glass.glassSource
@@ -131,6 +139,9 @@ fun GlassNowPlaying(
     val pageState = LocalBottomSheetPageState.current
     val context = LocalContext.current
     val song = metadata
+    // A live room shows its people above the player, right where it can always be seen.
+    val jamViewModel: JamViewModel = hiltViewModel()
+    val jamSession by jamViewModel.session.collectAsStateWithLifecycle()
 
     // Position: polled only while the sheet is open, so it costs nothing in the background.
     var position by remember { mutableLongStateOf(0L) }
@@ -190,7 +201,7 @@ fun GlassNowPlaying(
             Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            TopRow(pane, backdrop, onPane = { pane = if (pane == it) NowPlayingPane.Cover else it }) {
+            TopRow(pane, backdrop, jamSession, onPane = { pane = if (pane == it) NowPlayingPane.Cover else it }) {
                 menuState.show {
                     PlayerMenu(
                         mediaMetadata = song,
@@ -313,18 +324,122 @@ fun GlassNowPlaying(
 }
 
 @Composable
-private fun TopRow(pane: NowPlayingPane, backdrop: io.github.mkandreum.liquidbar.glass.GlassBackdrop, onPane: (NowPlayingPane) -> Unit, onMenu: () -> Unit) {
+private fun TopRow(
+    pane: NowPlayingPane,
+    backdrop: io.github.mkandreum.liquidbar.glass.GlassBackdrop,
+    jamSession: JamSession?,
+    onPane: (NowPlayingPane) -> Unit,
+    onMenu: () -> Unit,
+) {
+    val view = LocalView.current
+    val (vocalLevel, setVocalLevel) = rememberPreference(VocalSuppressionKey, 0f)
     // Grabber on its own line, buttons under it: they never touch.
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(
             Modifier.padding(top = 6.dp, bottom = 8.dp).size(40.dp, 5.dp)
                 .clip(RoundedCornerShape(3.dp)).background(Color.White.copy(alpha = 0.45f))
         )
+        jamSession?.let { session ->
+            if (session.members.isNotEmpty()) {
+                JuntosPill(
+                    session = session,
+                    backdrop = backdrop,
+                    modifier = Modifier.padding(bottom = 6.dp),
+                    onClick = { FeatureSheets.juntos = true },
+                )
+            }
+        }
         Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.End)) {
+            if (pane == NowPlayingPane.Lyrics) {
+                TopGlassButton("Sin voz", vocalLevel > 0.5f, backdrop) {
+                    com.xyonmusic.music.utils.Haptics.mark()
+                    view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                    setVocalLevel(if (vocalLevel > 0.5f) 0f else 1f)
+                }
+            }
             if (pane != NowPlayingPane.Cover) TopGlassButton("Cerrar", true, backdrop) { onPane(pane) }
             TopGlassButton("···", false, backdrop, onMenu)
         }
     }
+}
+
+/** Small glass pill with the room's people and «Juntos · N»; opens the Juntos sheet. */
+@Composable
+private fun JuntosPill(
+    session: JamSession,
+    backdrop: io.github.mkandreum.liquidbar.glass.GlassBackdrop,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    val view = LocalView.current
+    val shown = session.members.take(3)
+    val stackWidth = 22.dp + 14.dp * (shown.size - 1).coerceAtLeast(0)
+    Row(
+        modifier
+            .height(32.dp)
+            .clip(CircleShape)
+            .liquidGlass(
+                backdrop,
+                CircleShape,
+                LiquidGlassStyle.Dark.copy(
+                    blur = 10.dp,
+                    refractionHeight = 18.dp,
+                    refractionAmount = 18.dp,
+                    surface = Color.Black.copy(alpha = 0.30f),
+                ),
+            )
+            .clickable {
+                com.xyonmusic.music.utils.Haptics.mark()
+                view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY)
+                onClick()
+            }
+            .padding(start = 5.dp, end = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.height(22.dp).width(stackWidth)) {
+            shown.forEachIndexed { i, member ->
+                val shape = CircleShape
+                Box(
+                    Modifier
+                        .offset(x = 14.dp * i)
+                        .size(22.dp)
+                        .clip(shape)
+                        .background(memberColor(member.memberId))
+                        .border(1.5.dp, Color.Black.copy(alpha = 0.35f), shape),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (member.avatarUrl != null) {
+                        AsyncImage(
+                            model = member.avatarUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize().clip(shape),
+                        )
+                    } else {
+                        Text(
+                            text = member.displayName.take(1).uppercase().ifBlank { "·" },
+                            color = Color.White,
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.width(7.dp))
+        Text(
+            text = "Juntos · ${session.members.size}",
+            color = Color.White,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+        )
+    }
+}
+
+private fun memberColor(id: String): Color {
+    val palette = listOf(0xFFE8A87C, 0xFF7CB2E8, 0xFFB07CE8, 0xFF7CE8B0, 0xFFE87C9C)
+    return Color(palette[(id.hashCode() and 0x7fffffff) % palette.size])
 }
 
 /** The disc: a centred square cover that melts into the screen, grows while playing and shrinks on pause. */
@@ -360,7 +475,7 @@ private fun ColumnScope.CoverBlock(art: String?, title: String, artist: String, 
                 detectHorizontalDragGestures(
                     onDragEnd = {
                         val o = offset.value
-                        if (abs(o) > size.width * 0.25f) { view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK); onSkip(o < 0) }
+                        if (abs(o) > size.width * 0.25f) { com.xyonmusic.music.utils.Haptics.mark(); view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK); onSkip(o < 0) }
                         scope.launch { offset.animateTo(0f, spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMediumLow)) }
                     },
                     onDragCancel = { scope.launch { offset.animateTo(0f) } },
@@ -397,7 +512,7 @@ private fun GlassSymbolButton(symbol: String, label: String, backdrop: io.github
             .size(size)
             .graphicsLayer { scaleX = scale; scaleY = scale; shadowElevation = 0f }
             .clickable(interactionSource = src, indication = null, onClickLabel = label) {
-                view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY); onClick()
+                com.xyonmusic.music.utils.Haptics.mark(); view.performHapticFeedback(android.view.HapticFeedbackConstants.VIRTUAL_KEY); onClick()
             },
         contentAlignment = Alignment.Center,
     ) {

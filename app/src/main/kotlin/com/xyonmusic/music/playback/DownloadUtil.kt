@@ -12,6 +12,7 @@ import coil3.request.ImageRequest
 
 import android.content.Context
 import android.net.ConnectivityManager
+import android.os.SystemClock
 import androidx.core.content.getSystemService
 import androidx.core.net.toUri
 import androidx.media3.database.DatabaseProvider
@@ -20,6 +21,7 @@ import androidx.media3.common.util.Util
 import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
+import androidx.media3.datasource.HttpDataSource
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheWriter
@@ -31,6 +33,8 @@ import androidx.media3.exoplayer.offline.Download
 import androidx.media3.exoplayer.offline.DownloadManager
 import androidx.media3.exoplayer.offline.DownloadNotificationHelper
 import androidx.media3.exoplayer.offline.DownloadRequest
+import androidx.media3.exoplayer.offline.Downloader
+import androidx.media3.exoplayer.offline.DownloaderFactory
 import androidx.media3.exoplayer.offline.DownloadService
 import com.xyonmusic.music.constants.AudioQuality
 import com.xyonmusic.music.constants.AudioQualityKey
@@ -53,6 +57,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Runnable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
@@ -77,6 +82,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import java.time.LocalDateTime
 import java.util.concurrent.Executor
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -96,6 +102,8 @@ constructor(
     private val audioQuality by enumPreference(context, AudioQualityKey, AudioQuality.AUTO)
     private val songUrlCache = java.util.concurrent.ConcurrentHashMap<String, Pair<String, Long>>()
     private val autoDownloadRequests = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+    private val forbiddenRequests = java.util.concurrent.ConcurrentHashMap<String, DownloadRequest>()
+    private var rateLimited = false
     private val appContext: Context = context
     private val pendingUpgrades = java.util.concurrent.ConcurrentHashMap<String, FormatEntity>()
 
@@ -347,14 +355,17 @@ constructor(
             context,
             downloadIndex,
             SharedKeyDownloaderFactory(
-                DefaultDownloaderFactory(
-                    CacheDataSource.Factory().setCache(downloadCache).setUpstreamDataSourceFactory(dataSourceFactory),
-                    Executor(Runnable::run),
+                ThrottledDownloaderFactory(
+                    DefaultDownloaderFactory(
+                        CacheDataSource.Factory().setCache(downloadCache).setUpstreamDataSourceFactory(dataSourceFactory),
+                        Executor(Runnable::run),
+                    ),
+                    minIntervalMs = MIN_DOWNLOAD_INTERVAL_MS,
                 ),
                 downloadIndex,
             ),
         ).apply {
-            maxParallelDownloads = 3
+            maxParallelDownloads = 1
             addListener(
                 ExoDownloadService.TerminalStateNotificationHelper(
                     context,
@@ -382,6 +393,7 @@ constructor(
                                 Util.fromUtf8Bytes(download.request.data),
                                 download.failureReason,
                             )
+                            if (isForbidden(finalException)) handleForbiddenDownload(download)
                         }
 
                         // An upgrade copy never touches the song's own downloaded flag.
@@ -426,6 +438,43 @@ constructor(
                 }
             )
         }
+
+    /**
+     * A 403 means YouTube is rate-limiting this IP. Stop the whole queue, wait, then requeue
+     * the failed songs with fresh URLs. Hammering the CDN with retries only extends the block.
+     */
+    private fun handleForbiddenDownload(download: Download) {
+        forbiddenRequests[download.request.id] = download.request
+        synchronized(this) {
+            if (rateLimited) return
+            rateLimited = true
+        }
+        downloadManager.pauseDownloads()
+        scope.launch {
+            delay(RATE_LIMIT_COOLDOWN_MS)
+            val requests = forbiddenRequests.values.toList()
+            forbiddenRequests.clear()
+            requests.forEach { request ->
+                runCatching { downloadManager.removeDownload(request.id) }
+            }
+            requests.forEach { request ->
+                DownloadService.sendAddDownload(appContext, ExoDownloadService::class.java, request, false)
+            }
+            downloadManager.resumeDownloads()
+            synchronized(this@DownloadUtil) { rateLimited = false }
+        }
+    }
+
+    private fun isForbidden(error: Throwable?): Boolean {
+        var cause = error
+        var depth = 0
+        while (cause != null && depth < 8) {
+            if (cause is HttpDataSource.InvalidResponseCodeException && cause.responseCode == 403) return true
+            cause = cause.cause
+            depth++
+        }
+        return false
+    }
 
     init {
         scope.launch(Dispatchers.IO) {
@@ -534,3 +583,39 @@ constructor(
 
 /** Cache key suffix for a quality-upgrade copy of a download. */
 const val UPGRADE_SUFFIX = "#hq"
+
+/** Spaces download starts out so YouTube's guest rate limit (~300 songs/hour) is respected. */
+private const val MIN_DOWNLOAD_INTERVAL_MS = 12_000L
+private const val RATE_LIMIT_COOLDOWN_MS = 30L * 60L * 1000L
+
+private class ThrottledDownloaderFactory(
+    private val delegate: DownloaderFactory,
+    private val minIntervalMs: Long,
+) : DownloaderFactory {
+    private val lastStartMs = AtomicLong(0L)
+
+    override fun createDownloader(request: DownloadRequest): Downloader {
+        val downloader = delegate.createDownloader(request)
+        return object : Downloader {
+            override fun download(progressListener: Downloader.ProgressListener?) {
+                val last = lastStartMs.get()
+                if (last != 0L) {
+                    val wait = minIntervalMs - (SystemClock.elapsedRealtime() - last)
+                    if (wait > 0L) {
+                        try {
+                            Thread.sleep(wait)
+                        } catch (error: InterruptedException) {
+                            Thread.currentThread().interrupt()
+                            throw error
+                        }
+                    }
+                }
+                lastStartMs.set(SystemClock.elapsedRealtime())
+                downloader.download(progressListener)
+            }
+
+            override fun cancel() = downloader.cancel()
+            override fun remove() = downloader.remove()
+        }
+    }
+}

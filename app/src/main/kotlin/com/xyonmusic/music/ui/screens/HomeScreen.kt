@@ -501,14 +501,16 @@ fun HomeScreen(
     val trending = remember(chartsPage) {
         chartsPage?.sections?.firstOrNull { it.chartType == ChartType.TRENDING }?.items.orEmpty()
     }
-    val topPicksTitle = stringResource(R.string.top_picks_for_you)
+    // The rail shows YouTube's top chart, not personal picks: name it for what it is.
+    val topPicksTitle = "Éxitos del momento"
     val newReleaseTitle = stringResource(R.string.new_release_albums)
     val trendingTitle = stringResource(R.string.trending)
 
     PullToRefreshBox(
         state = pullRefreshState,
         isRefreshing = isRefreshing,
-        onRefresh = { viewModel.refresh() },
+        // A firm click when the pull crosses the threshold and the refresh starts.
+        onRefresh = { haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.Confirm); viewModel.refresh() },
         indicator = {
             // Compose the animated indicator only while it is visible to avoid idle redraws.
             if (isRefreshing || pullRefreshState.distanceFraction > 0f) {
@@ -684,17 +686,7 @@ fun HomeScreen(
                     } else if (selectedChip != null) {
                         chipFeedContent(deps, homePage)
                     } else {
-                        figmaHomeContent(
-                            deps = deps,
-                            mediaMetadata = mediaMetadataState,
-                            isPlaying = isPlayingState,
-                            topPicks = topPicks.ifEmpty { trending }.ifEmpty { newReleaseAlbums },
-                            topPicksTitle = topPicksTitle,
-                            newReleaseAlbums = if (topPicks.isNotEmpty() || trending.isNotEmpty()) newReleaseAlbums else emptyList(),
-                            newReleaseTitle = newReleaseTitle,
-                            trending = if (topPicks.isNotEmpty()) trending else emptyList(),
-                            trendingTitle = trendingTitle,
-                        )
+                        // Yours first (Spotify, then your own sections); general charts and releases after.
                         if (spotifyState.isAuthenticated) {
                             spotifyHomeSection(
                                 deps = deps,
@@ -713,6 +705,17 @@ fun HomeScreen(
                             quickPicksSongMap = quickPicksSongMap,
                             forgottenFavoritesSongMap = forgottenFavoritesSongMap,
                             url = url,
+                        )
+                        figmaHomeContent(
+                            deps = deps,
+                            mediaMetadata = mediaMetadataState,
+                            isPlaying = isPlayingState,
+                            topPicks = topPicks.ifEmpty { trending }.ifEmpty { newReleaseAlbums },
+                            topPicksTitle = topPicksTitle,
+                            newReleaseAlbums = if (topPicks.isNotEmpty() || trending.isNotEmpty()) newReleaseAlbums else emptyList(),
+                            newReleaseTitle = newReleaseTitle,
+                            trending = if (topPicks.isNotEmpty()) trending else emptyList(),
+                            trendingTitle = trendingTitle,
                         )
                     }
                     // Show this infinite shimmer only during a fetch; a continuation can remain available indefinitely.

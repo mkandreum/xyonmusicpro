@@ -196,7 +196,7 @@ internal fun LazyListScope.localHomeContent(
                         model = thumbnailUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
-                        placeholder = painterResource(R.drawable.thumbnail_fallback),
+                        placeholder = null,
                         error = painterResource(R.drawable.thumbnail_fallback),
                         modifier = Modifier
                             .size(ListThumbnailSize)

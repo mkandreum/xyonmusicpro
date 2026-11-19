@@ -129,6 +129,7 @@ fun ChartsScreen(
 
     val chartsPage by viewModel.chartsPage.collectAsStateWithLifecycle()
     val isLoading by viewModel.isLoading.collectAsStateWithLifecycle()
+    val loadError by viewModel.error.collectAsStateWithLifecycle()
 
     val lazyListState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
@@ -168,7 +169,21 @@ fun ChartsScreen(
         val hazeState = remember { HazeState() }
 
         Box(modifier = Modifier.fillMaxSize()) {
-            if (isLoading || chartsPage == null) {
+            if (chartsPage == null && loadError != null && !isLoading) {
+                // The charts request failed: say so and offer a retry instead of an endless placeholder.
+                Column(
+                    modifier = Modifier.fillMaxSize().padding(32.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text("No se han podido cargar los éxitos", color = onTint, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.height(12.dp))
+                    androidx.compose.material3.TextButton(onClick = { viewModel.loadCharts() }) {
+                        Text("Reintentar", color = onTint)
+                    }
+                }
+            } else if (chartsPage == null) {
+                // Placeholder only for the first load; loading more pages keeps what is already shown.
                 ShimmerHost(
                     modifier = Modifier.fillMaxSize(),
                 ) {

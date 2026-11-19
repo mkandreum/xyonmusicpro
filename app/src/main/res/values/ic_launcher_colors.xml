@@ -2,4 +2,5 @@
 <resources>
     <!-- Shared background layer for every app-icon variant. -->
     <color name="ic_launcher_tile">#1C1C1E</color>
+    <color name="ic_launcher_marfil">#F6F2EA</color>
 </resources>

@@ -158,7 +158,11 @@ class MainActivity : ComponentActivity() {
                 val slop = android.view.ViewConfiguration.get(this).scaledTouchSlop
                 val moved = kotlin.math.hypot(ev.x - tapDownX, ev.y - tapDownY) > slop
                 if (!moved && ev.eventTime - tapDownAt < 350) {
-                    com.xyonmusic.music.utils.Haptics.tick(this)
+                    // Wait a frame and a half: if the tapped control vibrates on its own (tabs, play,
+                    // skip...), skip this generic tick so the user never feels a double tap.
+                    window.decorView.postDelayed({
+                        if (!com.xyonmusic.music.utils.Haptics.playedRecently()) com.xyonmusic.music.utils.Haptics.tick(this)
+                    }, 28L)
                 }
             }
         }
@@ -167,6 +171,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
+        // Liquid pieces report their own haptics, so the generic tap tick does not double them.
+        io.github.mkandreum.liquidbar.LiquidHaptics.listener = com.xyonmusic.music.utils.Haptics::mark
         super.onCreate(savedInstanceState)
         window.decorView.layoutDirection = View.LAYOUT_DIRECTION_LTR
         WindowCompat.setDecorFitsSystemWindows(window, false)
@@ -198,6 +204,17 @@ class MainActivity : ComponentActivity() {
         // Cold launch from the launcher only (WelcomeActivity hands off with this extra);
         // notification/deep-link opens go straight to the app.
         setContent {
+            // Every Compose haptic is recorded, so the generic tap tick never doubles it.
+            val baseHaptics = androidx.compose.ui.platform.LocalHapticFeedback.current
+            val markingHaptics = androidx.compose.runtime.remember(baseHaptics) {
+                object : androidx.compose.ui.hapticfeedback.HapticFeedback {
+                    override fun performHapticFeedback(hapticFeedbackType: androidx.compose.ui.hapticfeedback.HapticFeedbackType) {
+                        com.xyonmusic.music.utils.Haptics.mark()
+                        baseHaptics.performHapticFeedback(hapticFeedbackType)
+                    }
+                }
+            }
+            androidx.compose.runtime.CompositionLocalProvider(androidx.compose.ui.platform.LocalHapticFeedback provides markingHaptics) {
             Box(Modifier.fillMaxSize()) {
                 AppRootContent(
                     activity = this@MainActivity,
@@ -208,6 +225,7 @@ class MainActivity : ComponentActivity() {
                     syncUtils = syncUtils,
                     historyDataSource = historyDataSource,
                 )
+            }
             }
         }
     }

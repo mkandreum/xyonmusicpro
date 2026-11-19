@@ -268,6 +268,17 @@ fun PlayerMenu(
                         text = stringResource(R.string.add_to_an_playlist),
                         onClick = { showChoosePlaylistDialog = true }
                     ),
+                    // Escuchar juntos: opens the LiquidUI glass sheet at the root.
+                    NewAction(
+                        icon = {
+                            SymbolIcon(symbol = sf("person.2.fill"), contentDescription = null, size = 32.dp)
+                        },
+                        text = "Juntos",
+                        onClick = {
+                            onDismiss()
+                            com.xyonmusic.music.ui.feature.FeatureSheets.juntos = true
+                        }
+                    ),
                     if (mediaMetadata.isLocalFile) null else NewAction(
                         icon = {
                             SymbolIcon(symbol = sf("square.and.arrow.up"), contentDescription = null, size = 32.dp)
@@ -287,8 +298,30 @@ fun PlayerMenu(
                         }
                     )
                 ),
-                columns = if (isListenTogetherGuest) 2 else 3,
+                columns = if (isListenTogetherGuest) 3 else 4,
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp)
+            )
+        }
+
+        item {
+            // Karaoke: the real-time vocal remover, switched on or off for whatever plays.
+            val (vocalLevel, setVocalLevel) = com.xyonmusic.music.utils.rememberPreference(com.xyonmusic.music.constants.VocalSuppressionKey, 0f)
+            IosMenuGroup(
+                items = listOf(
+                    IosMenuItemData(
+                        title = { Text(text = "Quitar la voz") },
+                        description = { Text(text = "Karaoke con esta canción") },
+                        icon = { SymbolIcon(symbol = sf("mic.slash.fill"), contentDescription = null, size = 24.dp) },
+                        trailingContent = {
+                            io.github.mkandreum.liquidbar.ui.LiquidToggle(
+                                checked = vocalLevel > 0.5f,
+                                onCheckedChange = { on -> setVocalLevel(if (on) 1f else 0f) },
+                                accent = androidx.compose.ui.graphics.Color(0xFFFA2D48),
+                            )
+                        },
+                        onClick = { setVocalLevel(if (vocalLevel > 0.5f) 0f else 1f) },
+                    ),
+                ),
             )
         }
 

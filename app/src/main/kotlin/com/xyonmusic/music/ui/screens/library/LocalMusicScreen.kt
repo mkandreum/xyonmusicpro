@@ -525,7 +525,7 @@ private fun SongListItem(
             onSuccess = com.xyonmusic.music.ui.utils.sharedArtworkImageListener(artworkOwner, song.thumbnailUrl),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            placeholder = painterResource(R.drawable.thumbnail_fallback),
+            placeholder = null,
             error = painterResource(R.drawable.thumbnail_fallback),
             modifier = Modifier
                 .sharedArtworkSource(albumArtworkId, song.thumbnailUrl, artworkOwner)
@@ -587,7 +587,7 @@ private fun AlbumListItem(
             onSuccess = com.xyonmusic.music.ui.utils.sharedArtworkImageListener(artworkOwner, album.thumbnailUrl),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            placeholder = painterResource(R.drawable.thumbnail_fallback),
+            placeholder = null,
             error = painterResource(R.drawable.thumbnail_fallback),
             modifier = Modifier
                 .sharedArtworkSource(album.id, album.thumbnailUrl, artworkOwner)
@@ -637,7 +637,7 @@ private fun ArtistListItem(
                 .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            placeholder = painterResource(R.drawable.thumbnail_fallback),
+            placeholder = null,
             error = painterResource(R.drawable.thumbnail_fallback),
             modifier = Modifier
                 .sharedArtworkSource(artist.id, artist.thumbnailUrl)

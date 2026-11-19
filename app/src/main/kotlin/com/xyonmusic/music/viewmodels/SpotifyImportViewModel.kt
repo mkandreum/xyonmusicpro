@@ -112,6 +112,8 @@ class SpotifyImportViewModel @Inject constructor(
 
     private var importJob: Job? = null
     private var homeFeedJob: Job? = null
+    private var sourcesJob: Job? = null
+    private var restoreJob: Job? = null
     private val authMutex = Mutex()
 
     private val json = Json {
@@ -182,7 +184,8 @@ class SpotifyImportViewModel @Inject constructor(
     }
 
     fun restoreSession() {
-        viewModelScope.launch(Dispatchers.IO) {
+        if (restoreJob?.isActive == true) return
+        restoreJob = viewModelScope.launch(Dispatchers.IO) {
             try {
                 val session = getSession()
                 if (session == null) {
@@ -238,6 +241,27 @@ class SpotifyImportViewModel @Inject constructor(
         }
     }
 
+    /** Refreshes in the background without blanking the cached playlists already on screen. */
+    fun refreshInBackground() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val session = runCatching { getSession() }.getOrNull()
+            if (session == null) {
+                if (restoreJob?.isActive != true &&
+                    (_uiState.value.isAuthenticated || _uiState.value.isLoading)
+                ) {
+                    _uiState.update { SpotifyImportUiState(isLoading = false) }
+                }
+                return@launch
+            }
+            if (!_uiState.value.isAuthenticated) {
+                restoreSession()
+            } else {
+                loadSources(silent = true)
+                loadHomeFeed(silent = true)
+            }
+        }
+    }
+
     fun connectWithCookies(spDc: String, spKey: String) {
         if (spDc.isBlank()) return
         homeFeedJob?.cancel()
@@ -260,9 +284,14 @@ class SpotifyImportViewModel @Inject constructor(
         }
     }
 
-    fun loadSources() {
-        viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+    fun loadSources(silent: Boolean = false) {
+        if (sourcesJob?.isActive == true) return
+        sourcesJob = viewModelScope.launch(Dispatchers.IO) {
+            if (!silent || _uiState.value.playlists.isEmpty()) {
+                _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            } else {
+                _uiState.update { it.copy(errorMessage = null) }
+            }
             try {
                 ensureAuthenticated()
                 val meResult = Spotify.me().getOrThrow()
@@ -302,10 +331,12 @@ class SpotifyImportViewModel @Inject constructor(
         }
     }
 
-    fun loadHomeFeed() {
+    fun loadHomeFeed(silent: Boolean = false) {
         if (homeFeedJob?.isActive == true) return
         homeFeedJob = viewModelScope.launch(Dispatchers.IO) {
-            _uiState.update { it.copy(isHomeFeedLoading = true, homeFeedErrorMessage = null) }
+            if (!silent || _uiState.value.homeShelves.isEmpty()) {
+                _uiState.update { it.copy(isHomeFeedLoading = true, homeFeedErrorMessage = null) }
+            }
             try {
                 var session = ensureAuthenticated()
                 if (session.clientId.isNullOrBlank()) {
@@ -388,7 +419,7 @@ class SpotifyImportViewModel @Inject constructor(
                 block()
             }
 
-    suspend fun fetchPlaylistTracks(playlistId: String): List<Song> = withContext(Dispatchers.IO) {
+    suspend fun fetchPlaylistTracks(playlistId: String, maxTracks: Int? = null): List<Song> = withContext(Dispatchers.IO) {
         val tracks = mutableListOf<SpotifyTrack>()
         var offset = 0
         val limit = 100
@@ -398,11 +429,12 @@ class SpotifyImportViewModel @Inject constructor(
             }
             if (page.items.isEmpty()) break
             tracks.addAll(page.items.mapNotNull { it.track })
+            if (maxTracks != null && tracks.size >= maxTracks) break
             offset += page.items.size
             if (offset >= page.total || page.items.size < limit) break
         }
 
-        return@withContext tracks.map { track ->
+        return@withContext tracks.take(maxTracks ?: Int.MAX_VALUE).map { track ->
             Song(
                 song = SongEntity(
                     id = "",

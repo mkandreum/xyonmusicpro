@@ -1,5 +1,6 @@
 package io.github.mkandreum.liquidbar.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -853,6 +854,8 @@ fun LiquidSheet(
         }
     }
     if (!visible && state.detent < 0) return
+    // The sheet is the topmost surface: back lowers it before touching the screen below.
+    BackHandler { state.close() }
     BoxWithConstraints(modifier.fillMaxSize()) {
         val H = constraints.maxHeight.toFloat()
         val density = LocalDensity.current

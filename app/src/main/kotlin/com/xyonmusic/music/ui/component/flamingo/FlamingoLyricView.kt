@@ -405,7 +405,7 @@ fun YosLyricView(
                                     }
                                 }
                             ) {
-                                view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
+                                com.xyonmusic.music.utils.Haptics.mark(); view.performHapticFeedback(android.view.HapticFeedbackConstants.CLOCK_TICK)
                                 mediaEvent.onSeek(lines.first().first.toInt())
                             }
                         }

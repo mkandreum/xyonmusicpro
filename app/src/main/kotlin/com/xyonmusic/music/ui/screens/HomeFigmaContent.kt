@@ -94,6 +94,7 @@ internal fun LazyListScope.figmaHomeContent(
         isPlaying = isPlaying,
         key = "top_picks",
         title = topPicksTitle,
+        // This rail is YouTube's top chart, so its title opens the full charts page.
         route = "charts_screen",
         items = topPicks,
         hero = true,
@@ -125,7 +126,7 @@ internal fun LazyListScope.figmaRail(
     isPlaying: State<Boolean>,
     key: String,
     title: String,
-    route: String,
+    route: String?,
     items: List<YTItem>,
     hero: Boolean = false,
 ) {
@@ -135,7 +136,7 @@ internal fun LazyListScope.figmaRail(
             NavigationTitle(
                 title = title,
                 modifier = Modifier.animateItem(),
-                onClick = { deps.navController.navigate(route) },
+                onClick = route?.let { r -> { deps.navController.navigate(r) } },
             )
         }
         shelfList(key = "${key}_list", deps = deps, entries = items.distinctBy { it.id }.map { it.toShelfEntry(deps) })
@@ -146,7 +147,7 @@ internal fun LazyListScope.figmaRail(
             NavigationTitle(
                 title = title,
                 modifier = Modifier.animateItem(),
-                onClick = { deps.navController.navigate(route) },
+                onClick = route?.let { r -> { deps.navController.navigate(r) } },
             )
         }
     }
@@ -163,7 +164,7 @@ internal fun LazyListScope.figmaRail(
             ) {
                 NavigationTitle(
                     title = title,
-                    onClick = { deps.navController.navigate(route) },
+                    onClick = route?.let { r -> { deps.navController.navigate(r) } },
                 )
             }
         }

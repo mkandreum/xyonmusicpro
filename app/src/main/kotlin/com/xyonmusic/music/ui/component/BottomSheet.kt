@@ -129,6 +129,7 @@ fun BottomSheet(
     keepContentComposed: Boolean = false,
     content: @Composable BoxScope.() -> Unit,
 ) {
+    state.hapticView = androidx.compose.ui.platform.LocalView.current
     val density = LocalDensity.current
     var hasBeenShown by remember { mutableStateOf(false) }
     if (!state.isCollapsed) hasBeenShown = true
@@ -507,8 +508,16 @@ class BottomSheetState(
         }
     }
 
+    /** View used to play the snap haptic when a drag of the sheet is released. */
+    internal var hapticView: android.view.View? = null
+
     fun performFling(velocity: Float, onDismiss: (() -> Unit)?) {
         endDragState()
+        // The sheet now snaps open, closed or away: a short click marks the landing.
+        hapticView?.let {
+            com.xyonmusic.music.utils.Haptics.mark()
+            it.performHapticFeedback(android.view.HapticFeedbackConstants.CONTEXT_CLICK)
+        }
         if (velocity > 250) {
             expand(velocity)
         } else if (velocity < -250) {

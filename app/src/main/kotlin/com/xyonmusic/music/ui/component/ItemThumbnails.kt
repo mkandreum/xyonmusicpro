@@ -32,7 +32,6 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -61,37 +60,19 @@ import kotlinx.coroutines.flow.first
 fun thumbnailPx(dp: Dp): Int = with(LocalDensity.current) { dp.roundToPx() }
 
 /**
- * The no-artwork look wherever a thumbnail is missing: a flat dark tile (no shadow —
- * there is nothing for one to sit behind) with the app's own logo centred at low
- * alpha, same shape the reference app uses for its music-note glyph. Swapped in as an
- * `AsyncImage`'s `placeholder`/`error` painter rather than restructuring those call
- * sites into `SubcomposeAsyncImage`, which would pay a subcomposition cost on every
- * successful load too, not just the rare missing-artwork case.
+ * The no-artwork look wherever a thumbnail is missing: a flat neutral tile, with no
+ * brand mark. There is nothing to show before the real artwork arrives, so nothing
+ * branded (and nothing from the old logo) is drawn while it loads.
  */
 @Composable
 fun rememberNoArtworkPainter(
-    tintAlpha: Float = 0.35f,
     fillAlpha: Float = 0.18f,
 ): androidx.compose.ui.graphics.painter.Painter {
-    val logoPainter = painterResource(R.drawable.xyonmusic_logo)
-    return remember(logoPainter, tintAlpha, fillAlpha) {
+    return remember(fillAlpha) {
         object : androidx.compose.ui.graphics.painter.Painter() {
             override val intrinsicSize = androidx.compose.ui.geometry.Size.Unspecified
             override fun androidx.compose.ui.graphics.drawscope.DrawScope.onDraw() {
                 drawRect(Color.Black.copy(alpha = fillAlpha))
-                val logoSize = minOf(size.width, size.height) * 0.4f
-                translate(
-                    left = (size.width - logoSize) / 2f,
-                    top = (size.height - logoSize) / 2f,
-                ) {
-                    with(logoPainter) {
-                        draw(
-                            size = androidx.compose.ui.geometry.Size(logoSize, logoSize),
-                            alpha = tintAlpha,
-                            colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(Color.White),
-                        )
-                    }
-                }
             }
         }
     }
@@ -167,7 +148,7 @@ fun ItemThumbnail(
                 onSuccess = imageListener,
                 contentDescription = null,
                 contentScale = if (cropAlbumArt) ContentScale.Crop else ContentScale.Fit,
-                placeholder = painterResource(R.drawable.thumbnail_fallback),
+                placeholder = null,
                 error = painterResource(R.drawable.thumbnail_fallback),
                 modifier = Modifier.fillMaxWidth()
             )

@@ -210,7 +210,7 @@ private fun LiquidNavBarChrome(
         else -> AppTheme.colorScheme.onSurface
     }
 
-    // Search is the bar's action: last cell while open, its own circle on the right when folded (Convx).
+    // Search is the bar's action: last cell while open, its own circle on the right when folded.
     val searchScreen = navigationItems.firstOrNull { it == Screens.Search }
     val tabScreens = remember(navigationItems) { navigationItems.filter { it != Screens.Search } }
     val selectedTabKey = rememberStickySelectedRoute(currentRoute, tabScreens)
@@ -282,8 +282,8 @@ private fun LiquidNavBarChrome(
                 val screen = barScreens.getOrNull(index)
                 if (screen != null && tabContextMenu != null) heldTab = screen to rect
             },
-            // Same dynamic as the Convx bar: the mini player sits above the tabs and, when the
-            // bar folds on scroll, slides down into the row beside the tab circle.
+            // Same dynamic as the reference bar: the mini player sits above the tabs and, when
+            // the bar folds on scroll, slides down into the row beside the tab circle.
             action = searchScreen?.let { screen ->
                 LiquidBarAction(
                     label = stringResource(screen.titleId),

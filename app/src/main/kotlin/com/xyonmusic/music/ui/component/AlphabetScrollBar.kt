@@ -148,7 +148,7 @@ fun AlphabetScrollBar(
                 }
             }
         }
-        view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
+        com.xyonmusic.music.utils.Haptics.mark(); view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK)
     }
 
     fun clearSelection() {

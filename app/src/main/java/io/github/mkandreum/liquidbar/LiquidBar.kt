@@ -604,7 +604,7 @@ private fun Color.compositeOverOrSelf(under: Color): Color =
     if (under.alpha <= 0f) this else this.compositeOver(under)
 
 /**
- * Barra con mini reproductor (portada de la barra de Convx): abierta, el mini reproductor va encima de la cápsula;
+ * Barra con mini reproductor: abierta, el mini reproductor va encima de la cápsula;
  * al hacer scroll se pliega en una sola fila — círculo de la pestaña activa, mini reproductor y círculo de la acción.
  * No hay morfing de la cápsula: fundido entre la barra abierta y la fila (fadeOut 90 ms, fadeIn 220 ms tras 90 ms),
  * el mini viaja como elemento compartido con un muelle sin rebote (StiffnessMediumLow) y un gooey de 300 ms con
@@ -645,7 +645,7 @@ fun LiquidMediaBar(
     )
     val lastAccessory = remember { mutableStateOf(accessory) }
     if (accessory != null) lastAccessory.value = accessory
-    // Igual que la barra de Convx: no hay morfing de la cápsula, sino un fundido entre la barra abierta y
+    // Como en la barra de referencia: no hay morfing de la cápsula, sino un fundido entre la barra abierta y
     // la fila plegada (AnimatedContent: fadeOut 90 ms, fadeIn 220 ms tras 90 ms), el mini reproductor viaja
     // como elemento compartido (muelle sin rebote, StiffnessMediumLow) y un gooey de 300 ms con pico a
     // mitad funde y separa las formas.
@@ -850,7 +850,7 @@ fun LiquidMediaBar(
         val openH = accOpenH + gapOpen + height
         // El contenedor cambia de alto con el mismo muelle (el sizeTransform de AnimatedContent).
         val totalH = lerp(openH.toFloat(), foldedH.toFloat(), p).roundToInt().coerceAtLeast(foldedH)
-        // Todo va alineado abajo, como el AnimatedContent de Convx (BottomCenter).
+        // Todo va alineado abajo, como el AnimatedContent de referencia (BottomCenter).
         val openTop = totalH - openH
         val barY = totalH - height
         val rowY = totalH - foldedH

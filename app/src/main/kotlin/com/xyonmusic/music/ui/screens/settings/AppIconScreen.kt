@@ -165,7 +165,7 @@ private fun AppIconTile(
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(28))
-                .background(colorResource(R.color.ic_launcher_tile))
+                .background(colorResource(icon.previewBackgroundRes))
                 .border(borderWidth, borderColor, RoundedCornerShape(28)),
         ) {
             Image(

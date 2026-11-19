@@ -8,6 +8,7 @@ package com.xyonmusic.music.utils
 import android.content.ComponentName
 import android.content.Context
 import android.content.pm.PackageManager
+import androidx.annotation.ColorRes
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import com.xyonmusic.music.R
@@ -22,8 +23,9 @@ enum class AppIcon(
     val alias: String,
     @DrawableRes val previewRes: Int,
     @StringRes val labelRes: Int,
+    @ColorRes val previewBackgroundRes: Int = R.color.ic_launcher_tile,
 ) {
-    WHITE("white", ".LauncherWhite", R.mipmap.ic_launcher_white_fg, R.string.app_icon_white),
+    WHITE("white", ".LauncherWhite", R.mipmap.ic_launcher_foreground, R.string.app_icon_white, R.color.ic_launcher_marfil),
     AZURE("azure", ".LauncherAzure", R.mipmap.ic_launcher_azure_fg, R.string.app_icon_azure),
     SKY("sky", ".LauncherSky", R.mipmap.ic_launcher_sky_fg, R.string.app_icon_sky),
     TEAL("teal", ".LauncherTeal", R.mipmap.ic_launcher_teal_fg, R.string.app_icon_teal),

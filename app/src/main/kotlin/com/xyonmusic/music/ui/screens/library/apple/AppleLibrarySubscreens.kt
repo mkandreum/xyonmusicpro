@@ -5,11 +5,18 @@
 
 package com.xyonmusic.music.ui.screens.library.apple
 
+import android.app.Activity
+import android.content.ContextWrapper
+import android.content.Intent
+import android.content.pm.ActivityInfo
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.ui.res.painterResource
 import com.xyonmusic.music.ui.utils.sharedArtworkSource
 
 import com.xyonmusic.music.ui.component.sf
-import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -33,6 +40,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -41,8 +49,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -51,6 +63,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -68,7 +81,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.ViewModelStoreOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import androidx.navigation.NavController
 import coil3.compose.AsyncImage
 import com.composables.sfsymbols.SfSymbols
@@ -133,16 +148,31 @@ import com.xyonmusic.music.ui.ios.foundation.IosMetrics
 import com.xyonmusic.music.ui.ios.foundation.iosGlass
 import com.xyonmusic.music.ui.ios.foundation.IosTheme
 import com.xyonmusic.music.ui.ios.foundation.iosRowPress
+import com.xyonmusic.music.ui.feature.SongsCoverFlowState
 import com.xyonmusic.music.ui.menu.AddToPlaylistDialog
 import com.xyonmusic.music.ui.utils.albumRoute
 import com.xyonmusic.music.ui.utils.artistRoute
 import com.xyonmusic.music.ui.utils.localPlaylistRoute
 import com.xyonmusic.music.utils.rememberEnumPreference
 import com.xyonmusic.music.utils.rememberPreference
+import io.github.mkandreum.liquidbar.LiquidGlassStyle
+import io.github.mkandreum.liquidbar.glass.glassSource
+import io.github.mkandreum.liquidbar.glass.rememberGlassBackdrop
+import io.github.mkandreum.liquidbar.ui.LiquidGlassButton
+import com.music.spotify.SpotifyHomeItem
+import com.music.spotify.SpotifyHomeItemType
+import com.music.spotify.SpotifyHomeShelf
+import com.music.spotify.SpotifyMapper
+import com.music.spotify.models.SpotifyImage
+import com.music.spotify.models.SpotifyPlaylist
+import com.xyonmusic.music.ui.screens.settings.SpotifyPlaylistBottomSheet
+import com.xyonmusic.music.ui.screens.settings.SpotifyPlaylistDetailSheet
 import com.xyonmusic.music.viewmodels.LibraryAlbumsViewModel
 import com.xyonmusic.music.viewmodels.LibraryArtistsViewModel
 import com.xyonmusic.music.viewmodels.LibraryPlaylistsViewModel
 import com.xyonmusic.music.viewmodels.LibrarySongsViewModel
+import com.xyonmusic.music.viewmodels.SpotifyImportProgress
+import com.xyonmusic.music.viewmodels.SpotifyImportViewModel
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
 import com.xyonmusic.music.ui.component.backdrop.backdrops.layerBackdrop
@@ -173,6 +203,20 @@ internal fun AppleSubpage(
     val sideInset = LocalPlayerAwareWindowInsets.current.asPaddingValues()
         .calculateStartPadding(androidx.compose.ui.platform.LocalLayoutDirection.current)
     val titleGutter = if (sideInset > 0.dp) 22.dp else 16.dp
+    // Tab pages have no back button: put the large title on the actions row itself, at the very
+    // top, and shrink it only enough for long titles to fit beside them.
+    val headerHeight = if (isTab) 44.dp else com.xyonmusic.music.ui.component.TopBarContentHeight
+    val titleTextSize = if (!isTab) 34.sp else when {
+        title.length > 18 -> 24.sp
+        title.length > 12 -> 30.sp
+        else -> 34.sp
+    }
+    val titleLineHeight = if (!isTab) 41.sp else when {
+        title.length > 18 -> 29.sp
+        title.length > 12 -> 36.sp
+        else -> 41.sp
+    }
+    val contentTop = if (isTab) statusTop + 2.dp else statusTop + headerHeight
     val collapse = rememberTitleCollapseProgressState(state, titleItemKey = LargeTitleKey)
     // Sample this page's list instead of the app root. The toolbar sits inside the root's
     // captured layer, so sampling the root would recurse through the toolbar and crash RenderNode.
@@ -197,29 +241,35 @@ internal fun AppleSubpage(
             // The side inset is padding, not a narrower list, so rows scroll under the side bar.
             contentPadding = androidx.compose.foundation.layout.PaddingValues(
                 start = sideInset,
-                top = statusTop + com.xyonmusic.music.ui.component.TopBarContentHeight,
+                top = contentTop,
                 bottom = bottom + 16.dp,
             ),
         ) {
             item(key = LargeTitleKey, contentType = "large_title") {
                 Text(
                     text = title,
-                    style = SfStyle(34.sp, 41.sp, FontWeight.Bold, (-0.6).sp).copy(fontFamily = com.xyonmusic.music.ui.theme.DisplayFontFamily),
+                    style = SfStyle(titleTextSize, titleLineHeight, FontWeight.Bold, (-0.6).sp).copy(fontFamily = com.xyonmusic.music.ui.theme.DisplayFontFamily),
                     color = colors.label,
                     maxLines = 1,
-                    modifier = Modifier.padding(start = titleGutter, end = 16.dp, top = 10.dp, bottom = 10.dp),
+                    modifier = Modifier.padding(
+                        start = titleGutter,
+                        // Leave the trailing glass capsule its own lane on tab pages.
+                        end = if (isTab) 100.dp else 16.dp,
+                        top = if (isTab) 2.dp else 10.dp,
+                        bottom = 8.dp,
+                    ),
                 )
             }
             content()
         }
 
-        // Only as deep as the toolbar row (+8dp of fade): the large title sits right
-        // under it and must be sharp until it actually scrolls up.
+        // Tab pages put the title beside the actions, so the fade only covers the status bar.
+        // Pushed pages keep the original fade under their full toolbar.
         TopFadeBlur(
             hazeState = haze,
             pageColor = colors.systemBackground,
             modifier = Modifier.align(Alignment.TopCenter),
-            heightOverride = statusTop + com.xyonmusic.music.ui.component.TopBarContentHeight + 8.dp,
+            heightOverride = if (isTab) statusTop + 2.dp else statusTop + headerHeight + 8.dp,
         )
 
         androidx.compose.runtime.CompositionLocalProvider(com.xyonmusic.music.ui.ios.foundation.LocalIosBackdrop provides pageBackdrop) {
@@ -227,6 +277,7 @@ internal fun AppleSubpage(
             title = title,
             titleAlphaProvider = { collapse.value },
             titleColor = colors.label,
+            largeTitle = isTab,
             leadingInset = sideInset + titleGutter,
             leading = {
                 if (!isTab) ToolbarCapsule(onClick = onBack, clearBackdrop = true) {
@@ -394,7 +445,12 @@ private fun ArtRow(
 // Playlists
 
 @Composable
-fun ApplePlaylistsPage(navController: NavController, onBack: () -> Unit, viewModel: LibraryPlaylistsViewModel = hiltViewModel()) {
+fun ApplePlaylistsPage(navController: NavController, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val viewModelOwner: ViewModelStoreOwner = remember(context) {
+        context.findActivity() as? ViewModelStoreOwner
+    } ?: LocalViewModelStoreOwner.current ?: error("No ViewModelStoreOwner")
+    val viewModel: LibraryPlaylistsViewModel = hiltViewModel(viewModelStoreOwner = viewModelOwner)
     val allPlaylists by viewModel.allPlaylists.collectAsStateWithLifecycle()
     val localOnly = com.xyonmusic.music.LocalLocalOnlyMode.current
     val playlists = allPlaylists.filter { !localOnly || it.playlist.browseId == null }
@@ -404,9 +460,17 @@ fun ApplePlaylistsPage(navController: NavController, onBack: () -> Unit, viewMod
     var newPlaylist by remember { mutableStateOf(false) }
     val colors = IosTheme.colors
     val liked = stringResource(R.string.liked_songs)
+    // The Playlists tab is also the door to the Spotify account: its playlists, its
+    // recommendations, and the same import flow as the Spotify settings page.
+    val spotifyViewModel: SpotifyImportViewModel = hiltViewModel(viewModelStoreOwner = viewModelOwner)
+    val spotifyState by spotifyViewModel.uiState.collectAsStateWithLifecycle()
+    val spotifyImport by spotifyViewModel.importProgress.collectAsStateWithLifecycle()
+    var showSpotifyImport by remember { mutableStateOf(false) }
+    var openedSpotifyPlaylist by remember { mutableStateOf<SpotifyPlaylist?>(null) }
+    LaunchedEffect(spotifyViewModel) { spotifyViewModel.refreshInBackground() }
 
     AppleSubpage(
-        title = stringResource(R.string.filter_playlists),
+        title = "Playlist",
         onBack = onBack,
         trailing = {
             ToolbarButtons(
@@ -425,7 +489,22 @@ fun ApplePlaylistsPage(navController: NavController, onBack: () -> Unit, viewMod
             )
         },
     ) {
-        if (playlists.isEmpty()) {
+        item(key = "spotify_section", contentType = "spotify") {
+            SpotifySection(
+                isAuthenticated = spotifyState.isAuthenticated,
+                isLoading = spotifyState.isLoading,
+                isHomeLoading = spotifyState.isHomeFeedLoading,
+                accountName = spotifyState.accountName,
+                playlists = spotifyState.playlists,
+                shelves = spotifyState.homeShelves,
+                importProgress = spotifyImport,
+                onConnect = { navController.navigate("settings/spotify") },
+                onImportAll = { showSpotifyImport = true },
+                onOpenPlaylist = { openedSpotifyPlaylist = it },
+                onImportHome = spotifyViewModel::importHomePlaylist,
+            )
+        }
+        if (playlists.isEmpty() && !spotifyState.isAuthenticated && !spotifyState.isLoading) {
             item(key = "empty_playlists", contentType = "placeholder") {
                 Column(Modifier.fillMaxWidth().padding(32.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     IosGlyph(sf("SFMusicNoteList"), colors.secondaryLabel, 44.dp)
@@ -435,6 +514,17 @@ fun ApplePlaylistsPage(navController: NavController, onBack: () -> Unit, viewMod
                         Text(stringResource(R.string.create_playlist), color = IosTheme.tint)
                     }
                 }
+            }
+        }
+        if (playlists.isNotEmpty() && spotifyState.isAuthenticated) {
+            item(key = "library_playlists_title", contentType = "title") {
+                Text(
+                    "En tu biblioteca",
+                    color = colors.secondaryLabel,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 4.dp),
+                )
             }
         }
         if (viewType == LibraryViewType.LIST) {
@@ -447,6 +537,7 @@ fun ApplePlaylistsPage(navController: NavController, onBack: () -> Unit, viewMod
                         rowHeight = 76.dp,
                         title = playlist.title,
                         subtitle = pluralStringResource(R.plurals.n_song, playlist.songCount, playlist.songCount),
+                        onClick = { navController.navigate(localPlaylistRoute(playlist.id, playlist.thumbnails.firstOrNull())) },
                     )
                 } }
             }
@@ -460,6 +551,287 @@ fun ApplePlaylistsPage(navController: NavController, onBack: () -> Unit, viewMod
     }
 
     if (newPlaylist) CreatePlaylistDialog(onDismiss = { newPlaylist = false })
+    if (showSpotifyImport) {
+        SpotifyPlaylistBottomSheet(
+            onDismiss = { showSpotifyImport = false },
+            viewModel = spotifyViewModel,
+        )
+    }
+    openedSpotifyPlaylist?.let { playlist ->
+        SpotifyPlaylistDetailSheet(
+            playlist = playlist,
+            viewModel = spotifyViewModel,
+            onDismiss = { openedSpotifyPlaylist = null },
+        )
+    }
+}
+
+private val SpotifyGreen = Color(0xFF1ED760)
+
+/**
+ * Spotify block at the top of Playlists: account, the user's playlists, and the home
+ * recommendations, all with the same import action as the Spotify settings page.
+ */
+@Composable
+private fun SpotifySection(
+    isAuthenticated: Boolean,
+    isLoading: Boolean,
+    isHomeLoading: Boolean,
+    accountName: String,
+    playlists: List<SpotifyPlaylist>,
+    shelves: List<SpotifyHomeShelf>,
+    importProgress: SpotifyImportProgress?,
+    onConnect: () -> Unit,
+    onImportAll: () -> Unit,
+    onOpenPlaylist: (SpotifyPlaylist) -> Unit,
+    onImportHome: (SpotifyHomeItem) -> Unit,
+) {
+    val colors = IosTheme.colors
+    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp)) {
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Image(
+                painter = painterResource(R.drawable.spotify),
+                contentDescription = null,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(Modifier.weight(1f)) {
+                Text("Spotify", color = colors.label, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    if (isAuthenticated) accountName.ifBlank { "Conectado" } else "Conecta tu cuenta",
+                    color = colors.secondaryLabel,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (isAuthenticated) {
+                Text(
+                    "Importar",
+                    color = SpotifyGreen,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(onClick = onImportAll)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                )
+            }
+        }
+
+        if (!isAuthenticated) {
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(colors.secondarySystemFill)
+                    .iosRowPress(onClick = onConnect)
+                    .padding(14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.spotify),
+                    contentDescription = null,
+                    modifier = Modifier.size(30.dp),
+                )
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        if (isLoading) "Conectando con Spotify…" else "Conecta Spotify",
+                        color = colors.label,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        "Tus playlists y recomendaciones aparecerán aquí.",
+                        color = colors.secondaryLabel,
+                        fontSize = 12.sp,
+                    )
+                }
+                IosGlyph(sf("chevron.right"), colors.tertiaryLabel, 16.dp)
+            }
+            return@Column
+        }
+
+        if (isLoading && playlists.isEmpty() && shelves.isEmpty()) {
+            Text(
+                "Cargando tus playlists de Spotify…",
+                color = colors.secondaryLabel,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+        }
+
+        if (playlists.isNotEmpty()) {
+            SpotifyShelfRow("Tus playlists", playlists, onOpenPlaylist)
+        } else if (!isLoading) {
+            Text(
+                "No hay playlists en tu cuenta de Spotify.",
+                color = colors.secondaryLabel,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+            )
+        }
+
+        shelves.forEach { shelf -> SpotifyHomeShelfRow(shelf, onOpenPlaylist, onImportHome) }
+
+        if (isHomeLoading && shelves.isEmpty()) {
+            Text(
+                "Cargando recomendaciones de Spotify…",
+                color = colors.secondaryLabel,
+                fontSize = 13.sp,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+            )
+        }
+
+        importProgress?.takeIf { !it.isFinished }?.let { progress ->
+            Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) {
+                Text(
+                    "Importando ${progress.playlistName}… ${(progress.percent * 100).toInt()} %",
+                    color = colors.label,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.height(4.dp))
+                Box(Modifier.fillMaxWidth().height(4.dp).clip(CircleShape).background(colors.secondarySystemFill)) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth(progress.percent.coerceIn(0f, 1f))
+                            .height(4.dp)
+                            .background(SpotifyGreen),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpotifyShelfRow(
+    title: String,
+    playlists: List<SpotifyPlaylist>,
+    onOpen: (SpotifyPlaylist) -> Unit,
+) {
+    val colors = IosTheme.colors
+    Column(Modifier.padding(top = 4.dp)) {
+        Text(
+            title,
+            color = colors.label,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(playlists, key = { "sp_" + it.id }) { playlist ->
+                SpotifyCard(
+                    art = SpotifyMapper.getPlaylistThumbnail(playlist),
+                    title = playlist.name,
+                    subtitle = listOfNotNull(
+                        playlist.owner?.displayName,
+                        playlist.tracks?.total?.let { "$it canciones" },
+                    ).joinToString(" · "),
+                    onClick = { onOpen(playlist) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpotifyHomeShelfRow(
+    shelf: SpotifyHomeShelf,
+    onOpenPlaylist: (SpotifyPlaylist) -> Unit,
+    onImport: (SpotifyHomeItem) -> Unit,
+) {
+    val colors = IosTheme.colors
+    Column(Modifier.padding(top = 4.dp)) {
+        Text(
+            shelf.title,
+            color = colors.label,
+            fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            items(shelf.items, key = { "sp_home_" + it.uri }) { item ->
+                SpotifyCard(
+                    art = item.artworkUrl,
+                    title = item.title,
+                    subtitle = "Spotify",
+                    onClick = {
+                        val playlistId = item.playlistId
+                        if (item.type == SpotifyHomeItemType.PLAYLIST && playlistId != null) {
+                            onOpenPlaylist(
+                                SpotifyPlaylist(
+                                    id = playlistId,
+                                    name = item.title,
+                                    images = listOfNotNull(
+                                        item.artworkUrl?.takeIf { it.isNotBlank() }?.let { SpotifyImage(url = it) },
+                                    ),
+                                ),
+                            )
+                        } else {
+                            onImport(item)
+                        }
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SpotifyCard(
+    art: String?,
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+) {
+    val colors = IosTheme.colors
+    Column(Modifier.width(132.dp).iosRowPress(onClick = onClick)) {
+        Box(
+            Modifier
+                .size(132.dp)
+                .clip(RoundedCornerShape(14.dp))
+                .background(colors.secondarySystemFill),
+        ) {
+            AsyncImage(
+                model = art,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            title,
+            color = colors.label,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (subtitle.isNotBlank()) {
+            Text(
+                subtitle,
+                color = colors.secondaryLabel,
+                fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
 }
 
 /** Places library items in two-column rows. */
@@ -718,13 +1090,77 @@ private fun AppleSongList(
     val playerConnection = LocalPlayerConnection.current
     val state = rememberLazyListState()
     val allSongs = songs
-    // Live filter from the glass search field under the title.
+    val isTab = LocalSubpageIsTab.current
+    // Live filter from the glass search field, collapsed behind the round magnifier until needed.
+    var searchOpen by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     @Suppress("NAME_SHADOWING")
     val songs = remember(allSongs, query) {
         val q = query.trim().lowercase()
         if (q.isEmpty()) allSongs
         else allSongs.filter { s -> s.song.title.lowercase().contains(q) || s.artists.any { it.name.lowercase().contains(q) } }
+    }
+    // All albums of this list for the full CoverFlow, plus two random covers for the preview.
+    val coverAlbums = remember(allSongs) { songsCoverAlbums(allSongs) }
+    val previewAlbums = remember(coverAlbums) { coverAlbums.shuffled().take(2) }
+    val missingDownloads = rememberMissingDownloads(allSongs)
+    val onlineCount = remember(allSongs) { allSongs.count { !it.song.isLocal } }
+    val context = LocalContext.current
+    val activity = remember(context) { context.findActivity() }
+    var previousOrientation by remember { mutableIntStateOf(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED) }
+    var coverFlowOpen by remember { mutableStateOf(false) }
+    val closeCoverFlow = {
+        coverFlowOpen = false
+        SongsCoverFlowState.open = false
+        activity?.requestedOrientation = previousOrientation
+    }
+    val openCoverFlow = {
+        if (isTab && coverAlbums.isNotEmpty()) {
+            previousOrientation = activity?.requestedOrientation ?: ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+            coverFlowOpen = true
+            // The root hides the chrome and the activity turns the phone: the flow owns the screen.
+            SongsCoverFlowState.open = true
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        }
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            if (coverFlowOpen) {
+                SongsCoverFlowState.open = false
+                activity?.requestedOrientation = previousOrientation
+            }
+        }
+    }
+    if (isTab) {
+        BackHandler(enabled = coverFlowOpen) { closeCoverFlow() }
+    }
+
+    // Landscape CoverFlow with the albums of this list, exactly like the original XyonMusic.
+    if (isTab && coverFlowOpen) {
+        val colors = IosTheme.colors
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(colors.systemBackground)
+                .systemBarsPadding(),
+        ) {
+            XyonCoverFlow(
+                entries = coverAlbums.map {
+                    CoverFlowEntry("a:" + it.albumId, it.title, it.artist, it.art)
+                },
+                onOpen = { index ->
+                    val album = coverAlbums[index]
+                    closeCoverFlow()
+                    navController.navigate(albumRoute(album.albumId, album.art))
+                },
+                fullScreen = true,
+            )
+            CoverFlowCloseButton(
+                modifier = Modifier.align(Alignment.TopStart).padding(start = 16.dp, top = 12.dp),
+                onClick = closeCoverFlow,
+            )
+        }
+        return
     }
 
     // By title, Apple groups under letter headers.
@@ -757,7 +1193,18 @@ private fun AppleSongList(
         state = state,
         trailing = {
             ToolbarCapsule {
-                Box(Modifier.padding(horizontal = 4.dp)) {
+                Row(
+                    Modifier.padding(horizontal = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    // The magnifier sits with the filters, in the top bar.
+                    ToolbarButton(
+                        icon = sf(if (searchOpen) "xmark" else "magnifyingglass"),
+                        onClick = {
+                            searchOpen = !searchOpen
+                            if (!searchOpen) query = ""
+                        },
+                    )
                     ToolbarButton(SortGlyph, menu = { dismiss ->
                         CheckRow(stringResource(R.string.apple_sort_title), sortType == SongSortType.NAME) { onSort(SongSortType.NAME, false); dismiss() }
                         CheckRow(stringResource(R.string.recently_added), sortType == SongSortType.CREATE_DATE) { onSort(SongSortType.CREATE_DATE, true); dismiss() }
@@ -781,12 +1228,31 @@ private fun AppleSongList(
             return@AppleSubpage
         }
         if (header != null) item(key = "folders", contentType = "folders") { header() }
-        // Glass search field, then a single "download what is missing" action when it applies.
-        item(key = "search", contentType = "search") {
-            GlassSearchField(query, { query = it }, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+        if (isTab && coverAlbums.isNotEmpty()) {
+            item(key = "albums_coverflow", contentType = "coverflow") {
+                AlbumsCoverFlowHeader(
+                    albums = previewAlbums,
+                    onOpenAlbum = { album -> navController.navigate(albumRoute(album.albumId, album.art)) },
+                    onOpenFlow = openCoverFlow,
+                )
+            }
         }
-        item(key = "downloadMissing", contentType = "download") {
-            DownloadMissingButton(allSongs, Modifier.padding(horizontal = 16.dp, vertical = 4.dp))
+        if (searchOpen) {
+            item(key = "search", contentType = "search") {
+                GlassSearchField(query, { query = it }, Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
+            }
+        }
+        // Only when there are missing downloads. When there are none, the row disappears
+        // completely and the first song follows the coverflow without a black gap.
+        if (missingDownloads.isNotEmpty()) {
+            item(key = "downloadMissing", contentType = "download") {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    DownloadMissingButton(missingDownloads, onlineCount)
+                }
+            }
         }
         if (sections != null) {
             var offset = 0
@@ -801,6 +1267,135 @@ private fun AppleSongList(
         } else {
             itemsIndexed(songs, key = { _, s -> s.id }, contentType = { _, _ -> "song" }) { i, song ->
                 Box(Modifier.animateItem()) { SongRow(song, navController) { play(i) } }
+            }
+        }
+    }
+}
+
+private data class SongsCoverAlbum(
+    val albumId: String,
+    val title: String,
+    val artist: String,
+    val art: String?,
+)
+
+/** Unique albums of the current Songs list, keeping the list's order (first occurrence wins). */
+private fun songsCoverAlbums(songs: List<Song>): List<SongsCoverAlbum> {
+    val seen = LinkedHashMap<String, SongsCoverAlbum>()
+    songs.forEach { song ->
+        val albumId = song.album?.id ?: song.song.albumId ?: return@forEach
+        if (seen.containsKey(albumId)) return@forEach
+        val title = song.album?.title ?: song.song.albumName ?: return@forEach
+        seen[albumId] = SongsCoverAlbum(
+            albumId = albumId,
+            title = title,
+            artist = song.artists.joinToString { it.name },
+            art = song.album?.thumbnailUrl ?: song.song.thumbnailUrl,
+        )
+    }
+    return seen.values.toList()
+}
+
+private tailrec fun android.content.Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is ContextWrapper -> baseContext.findActivity()
+    else -> null
+}
+
+/**
+ * The row from the sketch: the first two album covers of this list, then the liquid-glass
+ * "Albums CoverFlow" button. The trailing gutter keeps the A–Z rail clear of the crystal.
+ */
+@Composable
+private fun AlbumsCoverFlowHeader(
+    albums: List<SongsCoverAlbum>,
+    onOpenAlbum: (SongsCoverAlbum) -> Unit,
+    onOpenFlow: () -> Unit,
+) {
+    val backdrop = rememberGlassBackdrop()
+    val shape = RoundedCornerShape(28.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 34.dp, top = 2.dp, bottom = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        albums.take(2).forEach { album ->
+            Box(
+                Modifier
+                    .size(72.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(IosTheme.colors.secondarySystemFill)
+                    .border(0.5.dp, IosTheme.colors.label.copy(alpha = 0.10f), RoundedCornerShape(11.dp))
+                    .iosRowPress(onClick = { onOpenAlbum(album) }),
+            ) {
+                AsyncImage(
+                    model = album.art,
+                    contentDescription = album.title,
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+        Box(Modifier.weight(1f).height(72.dp)) {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .glassSource(backdrop)
+                    .background(
+                        Brush.linearGradient(listOf(Color(0xFF2A1016), Color(0xFF141113))),
+                        shape,
+                    )
+                    .border(0.5.dp, Color.White.copy(alpha = 0.12f), shape),
+            )
+            LiquidGlassButton(
+                onClick = onOpenFlow,
+                backdrop = backdrop,
+                modifier = Modifier.matchParentSize(),
+                shape = shape,
+                glass = LiquidGlassStyle.Dark.copy(blur = 10.dp, refractionHeight = 24.dp, refractionAmount = 24.dp),
+                tint = Color(0xFFFA2D48).copy(alpha = 0.20f),
+                onClickLabel = "Albums CoverFlow",
+            ) {
+                Text(
+                    text = "Albums CoverFlow",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+/** Glass way out of the full-screen CoverFlow, always reachable with the left thumb. */
+@Composable
+private fun CoverFlowCloseButton(modifier: Modifier = Modifier, onClick: () -> Unit) {
+    val backdrop = rememberGlassBackdrop()
+    Box(modifier.height(40.dp).width(104.dp)) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .glassSource(backdrop)
+                .background(Color.Black.copy(alpha = 0.30f), CircleShape),
+        )
+        LiquidGlassButton(
+            onClick = onClick,
+            backdrop = backdrop,
+            modifier = Modifier.matchParentSize(),
+            shape = CircleShape,
+            tint = Color.White.copy(alpha = 0.06f),
+            onClickLabel = "Cerrar Albums CoverFlow",
+        ) {
+            Row(
+                Modifier.padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IosGlyph(sf("SFChevronLeft"), Color.White, 16.dp)
+                Spacer(Modifier.width(4.dp))
+                Text("Cerrar", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
             }
         }
     }
@@ -887,6 +1482,8 @@ private fun SongRow(song: Song, navController: NavController, onPlay: () -> Unit
                         }
                     }
                 }
+                // Keep the three dots left of the A–Z rail instead of under its letters.
+                Spacer(Modifier.width(18.dp))
             },
         )
     }
@@ -936,20 +1533,32 @@ private fun GlassSearchField(value: String, onValueChange: (String) -> Unit, mod
  * Download action for the whole list: "Descargar todas" when nothing is downloaded, "Descargar las N que faltan"
  * when only some are, and nothing at all once every song is on the phone.
  */
+/** The online songs in this list that are not downloaded, downloading or queued. */
 @Composable
-private fun DownloadMissingButton(songs: List<Song>, modifier: Modifier = Modifier) {
-    val context = LocalContext.current
+private fun rememberMissingDownloads(songs: List<Song>): List<Song> {
     val downloadUtil = LocalDownloadUtil.current.get()
     val downloads by downloadUtil.downloads.collectAsStateWithLifecycle()
-    val online = songs.filterNot { it.song.isLocal }
-    val missing = online.filter { s ->
-        !s.song.isDownloaded && downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_COMPLETED &&
-            downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING &&
-            downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_QUEUED
+    return remember(songs, downloads) {
+        songs.filterNot { it.song.isLocal }.filter { s ->
+            !s.song.isDownloaded &&
+                downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_COMPLETED &&
+                downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING &&
+                downloads[s.id]?.state != androidx.media3.exoplayer.offline.Download.STATE_QUEUED
+        }
     }
+}
+
+@Composable
+private fun DownloadMissingButton(
+    missing: List<Song>,
+    onlineCount: Int,
+    modifier: Modifier = Modifier,
+) {
     if (missing.isEmpty()) return
+    val context = LocalContext.current
+    val downloadUtil = LocalDownloadUtil.current.get()
     val label = when {
-        missing.size == online.size -> "Descargar todas"
+        missing.size == onlineCount -> "Descargar todas"
         missing.size == 1 -> "Descargar la que falta"
         else -> "Descargar las ${missing.size} que faltan"
     }

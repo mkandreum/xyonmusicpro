@@ -17,6 +17,16 @@ import android.os.VibratorManager
 object Haptics {
     @Volatile private var vibrator: Vibrator? = null
 
+    /** Uptime of the last haptic any component played, so the generic tap tick never doubles it. */
+    @Volatile var lastAt: Long = 0L
+        private set
+
+    /** Records a haptic played elsewhere (View or Compose haptics), so the tap tick stays silent. */
+    fun mark() { lastAt = android.os.SystemClock.uptimeMillis() }
+
+    /** True when a component has just vibrated on its own. */
+    fun playedRecently(windowMs: Long = 90): Boolean = android.os.SystemClock.uptimeMillis() - lastAt < windowMs
+
     private fun vib(context: Context): Vibrator? = vibrator ?: run {
         val v = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             (context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as? VibratorManager)?.defaultVibrator
@@ -34,6 +44,7 @@ object Haptics {
     fun click(context: Context) = play(context, VibrationEffect.EFFECT_CLICK, 20)
 
     private fun play(context: Context, effect: Int, fallbackMs: Long) {
+        mark()
         val v = vib(context) ?: return
         if (!v.hasVibrator()) return
         runCatching {

@@ -462,7 +462,9 @@ internal fun AppRootContent(
             val isWideScreen = configuration.containerDpSize.width >= TabletWidthThreshold
             // As in the original XyonMusic: rotate the phone on the Library (any of its views) and the
             // whole screen becomes the horizontal CoverFlow, with no side bar, top bar or tab bar.
-            val landscapeCoverFlow = isLandscape && currentRoute == Screens.Library.route
+            // The Songs tab also owns the screen when its Albums CoverFlow is open.
+            val songsCoverFlow = com.xyonmusic.music.ui.feature.SongsCoverFlowState.open
+            val landscapeCoverFlow = (isLandscape && currentRoute == Screens.Library.route) || songsCoverFlow
             val showRail = (forceTabletLayout || isWideScreen) && !landscapeCoverFlow
 
             // Only record the screen layer while the native glass bar can actually sample it.
@@ -848,7 +850,7 @@ internal fun AppRootContent(
                         if (AppRoutePolicy.isWebViewRoute(currentRoute)) Modifier
                         else Modifier.layerBackdrop(menuBackdrop)
                             // Record the LiquidUI menu source only while a menu is open: no cost the rest of the time.
-                            .then(if (LocalMenuState.current.isVisible) Modifier.glassSource(menuGlassBackdrop) else Modifier),
+                            .then(if (LocalMenuState.current.isVisible || com.xyonmusic.music.ui.feature.FeatureSheets.anyOpen) Modifier.glassSource(menuGlassBackdrop) else Modifier),
                     ),
                 ) {
                     Scaffold(
@@ -1297,6 +1299,12 @@ internal fun AppRootContent(
                     nativeBackdrop = menuGlassBackdrop,
                 )
                 }
+                // Juntos and DJ sheets: LiquidUI glass sheets over the whole screen (player included).
+                val featureSheetPortal = io.github.mkandreum.liquidbar.ui.rememberLiquidSheetPortal()
+                androidx.compose.runtime.CompositionLocalProvider(io.github.mkandreum.liquidbar.ui.LocalLiquidSheetPortal provides featureSheetPortal) {
+                    com.xyonmusic.music.ui.feature.FeatureSheetsHost()
+                }
+                io.github.mkandreum.liquidbar.ui.LiquidSheetPortalHost(portal = featureSheetPortal, backdrop = menuGlassBackdrop)
 
                 ForcedDarkScope(enabled = menuDark) {
                 BottomSheetPage(

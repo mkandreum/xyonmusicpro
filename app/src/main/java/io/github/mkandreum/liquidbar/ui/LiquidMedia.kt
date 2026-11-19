@@ -143,7 +143,7 @@ fun LiquidArcSlider(
             strong -> HapticFeedbackConstants.LONG_PRESS
             else -> HapticFeedbackConstants.CLOCK_TICK
         }
-        view.performHapticFeedback(c)
+        io.github.mkandreum.liquidbar.LiquidHaptics.performed(); view.performHapticFeedback(c)
     }
 
     BoxWithConstraints(
@@ -341,7 +341,7 @@ fun LiquidPlayButton(
         modifier
             .size(size)
             .clickable(interactionSource = src, indication = null, role = Role.Button, onClickLabel = if (isPlaying) "Pausa" else "Reproducir") {
-                view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY); onClick()
+                io.github.mkandreum.liquidbar.LiquidHaptics.performed(); view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY); onClick()
             },
         contentAlignment = Alignment.Center,
     ) {
@@ -392,7 +392,7 @@ private fun GlassGlyph(shape: androidx.compose.ui.graphics.Shape, backdrop: Glas
     val sources = remember(backdrop) { listOf(GlassSource(backdrop)) }
     Box(
         modifier.size(size).clickable(interactionSource = src, indication = null, role = Role.Button, onClickLabel = label) {
-            view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY); onClick()
+            io.github.mkandreum.liquidbar.LiquidHaptics.performed(); view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY); onClick()
         },
         contentAlignment = Alignment.Center,
     ) {
@@ -464,7 +464,7 @@ fun LiquidMiniPlayer(
     val pressed by press.collectIsPressedAsState()
     val pressScale by animateFloatAsState(if (pressed) 1.04f else 1f, spring(stiffness = Spring.StiffnessMediumLow), label = "miniPress")
     val isInline by remember { derivedStateOf { inline() > 0.5f } }
-    val haptic: (() -> Unit) -> () -> Unit = { f -> { view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY); f() } }
+    val haptic: (() -> Unit) -> () -> Unit = { f -> { io.github.mkandreum.liquidbar.LiquidHaptics.performed(); view.performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY); f() } }
 
     BoxWithConstraints(
         modifier
@@ -479,7 +479,7 @@ fun LiquidMiniPlayer(
                         onDragCancel = { scope.launch { offsetX.animateTo(0f, settle) } },
                         onDragEnd = {
                             val o = offsetX.value
-                            if (abs(o) > threshold) { view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK); onSkip(o < 0) }
+                            if (abs(o) > threshold) { io.github.mkandreum.liquidbar.LiquidHaptics.performed(); view.performHapticFeedback(HapticFeedbackConstants.CLOCK_TICK); onSkip(o < 0) }
                             scope.launch { offsetX.animateTo(0f, settle) }
                         },
                     ) { ch, d -> ch.consume(); scope.launch { offsetX.snapTo(offsetX.value + d) } }

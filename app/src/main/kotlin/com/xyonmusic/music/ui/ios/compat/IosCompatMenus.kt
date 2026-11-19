@@ -22,8 +22,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -275,31 +274,15 @@ private class MenuRowHandle {
 private val LocalMenuRows = compositionLocalOf<MenuRows?> { null }
 
 /**
- * Makes this the trigger of a [DropdownMenu], iOS-style: the menu opens on touch-down,
- * and the finger can slide straight onto a row and lift to choose it — no second tap.
- * A plain tap just opens the menu.
+ * Makes this the trigger of a [DropdownMenu]: the menu opens on a real tap, never while
+ * the list is being scrolled. Movement beyond touch slop cancels the tap and leaves the
+ * gesture to the scrollable parent.
  */
 fun Modifier.menuTrigger(onOpen: () -> Unit): Modifier = composed {
     val open by rememberUpdatedState(onOpen)
-    val coords = remember { arrayOfNulls<LayoutCoordinates>(1) }
-    this
-        .onGloballyPositioned { coords[0] = it }
-        .pointerInput(Unit) {
-            awaitEachGesture {
-                val down = awaitFirstDown()
-                down.consume()
-                open()
-                while (true) {
-                    val change = awaitPointerEvent().changes.firstOrNull() ?: break
-                    val c = coords[0]
-                    if (c != null && c.isAttached) MenuSlide.pointer = c.localToScreen(change.position)
-                    change.consume()
-                    if (!change.pressed) break
-                }
-                MenuSlide.release++
-                MenuSlide.pointer = null
-            }
-        }
+    this.pointerInput(Unit) {
+        detectTapGestures(onTap = { open() })
+    }
 }
 
 /**

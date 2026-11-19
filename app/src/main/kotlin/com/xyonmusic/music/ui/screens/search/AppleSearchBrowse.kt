@@ -13,19 +13,27 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -48,10 +56,17 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation.NavController
 import com.xyonmusic.music.ui.utils.youtubeBrowseRoute
 import coil3.compose.AsyncImage
+import com.xyonmusic.music.ui.component.SymbolIcon
+import com.xyonmusic.music.ui.component.sf
 import com.xyonmusic.music.ui.component.shapes.ContinuousRoundedRectangle
+import com.xyonmusic.music.ui.feature.FeatureSheets
 import com.xyonmusic.music.ui.ios.compat.Text
 import com.xyonmusic.music.ui.ios.foundation.iosRowPress
 import com.xyonmusic.music.ui.screens.library.apple.SfStyle
+import io.github.mkandreum.liquidbar.LiquidGlassStyle
+import io.github.mkandreum.liquidbar.glass.glassSource
+import io.github.mkandreum.liquidbar.glass.rememberGlassBackdrop
+import io.github.mkandreum.liquidbar.ui.LiquidGlassButton
 import com.music.innertube.YouTube
 import com.music.innertube.models.AlbumItem
 import com.music.innertube.models.ArtistItem
@@ -153,6 +168,13 @@ fun AppleSearchBrowse(
             item(key = "header", span = { GridItemSpan(maxLineSpan) }, contentType = "header") {
                 header()
             }
+            // DJ con IA: the one highlighted card above the genres, as in the sketch.
+            item(key = "dj_card", span = { GridItemSpan(maxLineSpan) }, contentType = "dj") {
+                DjFeatureCard(
+                    onClick = { FeatureSheets.dj = true },
+                    modifier = Modifier.padding(top = 2.dp, bottom = 6.dp),
+                )
+            }
             items(categories.orEmpty(), key = { it.key }, contentType = { "tile" }) { item ->
                 LaunchedEffect(item.key) { viewModel.loadArt(item) }
                 CategoryTile(
@@ -162,6 +184,79 @@ fun AppleSearchBrowse(
                 ) {
                     navController.navigate(youtubeBrowseRoute(item.endpoint.browseId, item.endpoint.params))
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Highlighted DJ card at the top of Discover: real LiquidUI glass over its own tinted plate, so it
+ * keeps the crystal edge without needing a screen-sized backdrop. Opens the DJ sheet at the root.
+ */
+@Composable
+private fun DjFeatureCard(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val backdrop = rememberGlassBackdrop()
+    val shape = RoundedCornerShape(24.dp)
+    Box(modifier.fillMaxWidth().height(116.dp)) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .glassSource(backdrop)
+                .background(
+                    Brush.linearGradient(listOf(Color(0xFF3A0D15), Color(0xFF121012))),
+                    shape,
+                )
+                .border(0.5.dp, Color.White.copy(alpha = 0.12f), shape),
+        )
+        LiquidGlassButton(
+            onClick = onClick,
+            backdrop = backdrop,
+            modifier = Modifier.matchParentSize(),
+            shape = shape,
+            glass = LiquidGlassStyle.Dark.copy(blur = 10.dp, refractionHeight = 26.dp, refractionAmount = 26.dp),
+            tint = Color(0xFFFA2D48).copy(alpha = 0.24f),
+            onClickLabel = "DJ con IA",
+        ) {
+            Row(
+                Modifier.fillMaxSize().padding(horizontal = 18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    Modifier.size(52.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    SymbolIcon(
+                        symbol = sf("waveform"),
+                        contentDescription = null,
+                        size = 28.dp,
+                        tint = Color.White,
+                    )
+                }
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = "DJ con IA",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                    )
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        text = "Una sesión continua según tu ambiente",
+                        color = Color.White.copy(alpha = 0.66f),
+                        fontSize = 13.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Spacer(Modifier.width(8.dp))
+                SymbolIcon(
+                    symbol = sf("chevron.right"),
+                    contentDescription = null,
+                    size = 16.dp,
+                    tint = Color.White.copy(alpha = 0.65f),
+                )
             }
         }
     }
