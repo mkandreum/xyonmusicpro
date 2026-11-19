@@ -240,6 +240,28 @@ fun Bitmap.extractGradientColors(): List<Color> {
         listOf(Color(0xFF595959), Color(0xFF0D0D0D))
 }
 
+/**
+ * Apple-dark surface overrides applied unconditionally in dark mode.
+ * pureBlack is applied AFTER this and wins for surface/background when enabled.
+ */
+fun ColorScheme.appleSurfaces() = copy(
+    background = AppleTokens.Bg,
+    surface = AppleTokens.Bg,
+    surfaceContainerLowest = AppleTokens.Bg,
+    surfaceContainerLow = AppleTokens.BgElevated,
+    surfaceContainer = AppleTokens.Card,
+    surfaceContainerHigh = AppleTokens.Card,
+    surfaceContainerHighest = AppleTokens.CardSecondary,
+    surfaceVariant = AppleTokens.CardSecondary,
+    // primary/onPrimary set here are only a base — accentText runs afterwards and
+    // gives them the contrast-clamped accent, so controls and link text carry the
+    // theme colour rather than rendering flat white.
+    primary = Color.White,
+    onPrimary = Color.Black,
+    primaryContainer = AppleTokens.CardSecondary,
+    onPrimaryContainer = Color.White,
+)
+
 /** Pulls this text color toward white ([light]) or black until it reaches 4.5:1 on [background]; no-op when unspecified. */
 private fun Color.passingOn(background: Color, light: Boolean): Color {
     if (!background.isSpecified) return this

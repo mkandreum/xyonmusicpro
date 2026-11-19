@@ -427,3 +427,9 @@ private fun FancyArtworkFadeOverlay(
     }
 }
 
+fun Modifier.hideWhileArtworkMorphing(progress: () -> Float): Modifier = graphicsLayer {
+    // Lambda, not a Float: read in the draw phase so the V2 subtree does not recompose per
+    // frame of every open/close drag ("measure is called on a deactivated node").
+    val fraction = progress()
+    alpha = if (fraction > 0f && fraction < 1f && PlayerMorph.active) 0f else 1f
+}

@@ -218,3 +218,61 @@ private object FullWindowPositionProvider : PopupPositionProvider {
         popupContentSize: IntSize,
     ): IntOffset = IntOffset.Zero
 }
+
+/**
+ * The iOS "hold to open" context menu: press and hold anything, the pressed thing lifts out
+ * of a dimmed screen and a glass menu materialises beside it.
+ *
+ * Timing read off the reference comparison clip (AQPov…, 30fps): the panel is up in about
+ * four frames, arriving as a small, heavily blurred, half-transparent shape that resolves
+ * into a crisp full-size card -- a blur that clears, not just an alpha ramp, which is what
+ * makes it read as glass condensing rather than a popup appearing. Dismissal is faster and
+ * plain (no blur on the way out), as it is on iOS.
+ *
+ * The panel itself is [IosMenu]; this adds the gesture, the lift, the scrim and the motion.
+ */
+@Composable
+fun IosContextMenu(
+    sections: List<IosMenuSection>,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    /** Gap between the anchor and the menu, matching the reference's tight offset. */
+    anchorGap: Dp = 8.dp,
+    /** Kept off the screen edges by this much, as iOS clamps its menus. */
+    screenMargin: Dp = 12.dp,
+    onClick: (() -> Unit)? = null,
+    /** Apple Music's Add / Favourite / Share row across the top of the panel. */
+    quickActions: List<IosMenuItem> = emptyList(),
+    content: @Composable () -> Unit,
+) {
+    val haptics = LocalHapticFeedback.current
+    var anchor by remember { mutableStateOf(Rect.Zero) }
+    var open by remember { mutableStateOf(false) }
+
+    Box(
+        modifier = modifier
+            .onGloballyPositioned { anchor = it.boundsInWindow() }
+            .pointerInput(enabled, onClick) {
+                if (!enabled) return@pointerInput
+                detectTapGestures(
+                    onLongPress = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        open = true
+                    },
+                    onTap = { onClick?.invoke() },
+                )
+            }
+    ) {
+        content()
+    }
+
+    IosContextMenuOverlay(
+        sections = sections,
+        anchor = anchor.takeIf { open },
+        onDismissRequest = { open = false },
+        anchorGap = anchorGap,
+        screenMargin = screenMargin,
+        liftedContent = content,
+        quickActions = quickActions,
+    )
+}

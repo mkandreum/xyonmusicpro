@@ -63,6 +63,167 @@ private val MaxOverflow = 28.dp
 
 private enum class ElasticRegion { LEFT, MIDDLE, RIGHT }
 
+/**
+ * Volume-style slider (no thumb, a filling capsule track) with the React Bits
+ * ElasticSlider drag-past-the-edge feel. Icons are supplied by the caller so
+ * this stays agnostic to which glyphs a volume/brightness/whatever control uses.
+ */
+@Composable
+fun ElasticVolumeSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    onValueChangeFinished: (() -> Unit)? = null,
+    activeColor: Color,
+    inactiveColor: Color,
+    restingTrackHeight: Dp = 6.dp,
+    /** Inset of the speaker glyphs from the row edges. */
+    horizontalPadding: Dp = 16.dp,
+    activeTrackHeight: Dp = 18.dp,
+    leftIcon: @Composable () -> Unit,
+    rightIcon: @Composable () -> Unit,
+) {
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
+    val maxOverflowPx = with(density) { MaxOverflow.toPx() }
+
+    var trackWidthPx by remember { mutableFloatStateOf(0f) }
+    var dragging by remember { mutableStateOf(false) }
+    var region by remember { mutableStateOf(ElasticRegion.MIDDLE) }
+
+    // Plain state (not Animatable): drag callbacks aren't suspend, so the write must be synchronous; only release springs.
+    var liveOverflowPx by remember { mutableFloatStateOf(0f) }
+    var releasing by remember { mutableStateOf(false) }
+    val releaseOverflow = remember { Animatable(0f) }
+    val overflowPx = if (releasing) releaseOverflow.value else liveOverflowPx
+
+    val scale by animateFloatAsState(
+        targetValue = if (dragging) 1.12f else 1f,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "elasticVolumeScale",
+    )
+    val trackHeight by animateDpAsState(
+        targetValue = if (dragging) activeTrackHeight else restingTrackHeight,
+        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessLow),
+        label = "elasticVolumeTrackHeight",
+    )
+
+    // One-shot nudge on entry into an overflow region, not a held bulge.
+    val leftPulse = remember { Animatable(1f) }
+    val rightPulse = remember { Animatable(1f) }
+    LaunchedEffect(region) {
+        when (region) {
+            ElasticRegion.LEFT -> {
+                leftPulse.snapTo(1f)
+                leftPulse.animateTo(1.4f, tween(120))
+                leftPulse.animateTo(1f, tween(130))
+            }
+            ElasticRegion.RIGHT -> {
+                rightPulse.snapTo(1f)
+                rightPulse.animateTo(1.4f, tween(120))
+                rightPulse.animateTo(1f, tween(130))
+            }
+            ElasticRegion.MIDDLE -> Unit
+        }
+    }
+
+    fun onMove(rawX: Float) {
+        releasing = false
+        region = regionFor(rawX, trackWidthPx)
+        liveOverflowPx = decay(overflowPast(rawX, trackWidthPx), maxOverflowPx)
+        if (trackWidthPx > 0f) onValueChange((rawX / trackWidthPx).coerceIn(0f, 1f))
+    }
+
+    fun onRelease() {
+        dragging = false
+        region = ElasticRegion.MIDDLE
+        val startFrom = liveOverflowPx
+        liveOverflowPx = 0f
+        releasing = true
+        scope.launch {
+            releaseOverflow.snapTo(startFrom)
+            releaseOverflow.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = Spring.StiffnessMedium))
+            releasing = false
+        }
+        onValueChangeFinished?.invoke()
+    }
+
+    Row(
+        modifier = modifier.heightIn(min = 48.dp).padding(horizontal = horizontalPadding),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ElasticIcon(pulse = leftPulse, pullPx = if (region == ElasticRegion.LEFT)
+            -overflowPx.coerceAtMost(with(density) { 8.dp.toPx() }) else 0f) {
+            leftIcon()
+        }
+
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .height(48.dp)
+                .onSizeChanged { trackWidthPx = it.width.toFloat() }
+                .pointerInput(enabled) {
+                    if (!enabled) return@pointerInput
+                    // One gesture owns both press and drag: the former tap
+                    // detector cancelled and shrank the track when dragging began.
+                    awaitEachGesture {
+                        val down = awaitFirstDown()
+                        dragging = true
+                        onMove(down.position.x)
+                        down.consume()
+                        try {
+                            do {
+                                val change = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                                    ?: break
+                                if (change.pressed) onMove(change.position.x)
+                                change.consume()
+                            } while (change.pressed)
+                        } finally {
+                            onRelease()
+                        }
+                    }
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            // Squash/stretch anchored at the pulled end so the other end stays put.
+            val stretchOrigin = if (region == ElasticRegion.RIGHT) 0f else 1f
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(trackHeight)
+                    .graphicsLayer {
+                        if (size.width > 0f) {
+                            scaleX = scale * (1f + overflowPx / size.width)
+                        }
+                        scaleY = scale * (1f - (overflowPx / maxOverflowPx) * 0.2f)
+                        transformOrigin = TransformOrigin(stretchOrigin, 0.5f)
+                    }
+                    .clip(ContinuousCapsule())
+                    .background(inactiveColor)
+            ) {
+                val filled = trackWidthPx * value.coerceIn(0f, 1f)
+                if (filled > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(trackHeight)
+                            .drawBehind {
+                                drawRoundRect(activeColor, size = Size(filled, size.height),
+                                    cornerRadius = CornerRadius(size.height / 2f))
+                            }
+                    )
+                }
+            }
+        }
+
+        ElasticIcon(pulse = rightPulse, pullPx = if (region == ElasticRegion.RIGHT)
+            overflowPx.coerceAtMost(with(density) { 8.dp.toPx() }) else 0f) {
+            rightIcon()
+        }
+    }
+}
+
 @Composable
 private fun ElasticIcon(pulse: Animatable<Float, AnimationVector1D>, pullPx: Float, content: @Composable () -> Unit) {
     Box(

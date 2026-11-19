@@ -120,6 +120,30 @@ fun IosNavigationBar(
     }
 }
 
+/**
+ * A group of toolbar buttons riding in one glass capsule — SwiftUI's ToolbarItemGroup
+ * as iOS 26 draws it.
+ */
+@Composable
+fun IosToolbarGroup(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier = modifier
+            .height(44.dp)
+            .iosGlass(IosCapsule, IosGlassStyle.Regular, IosGlassSpec.Chrome)
+            .padding(horizontal = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        CompositionLocalProvider(
+            LocalIosContentColor provides IosTheme.colors.label,
+            LocalIosTextStyle provides IosTheme.typography.body,
+        ) { content() }
+    }
+}
+
 /** SwiftUI's ToolbarSpacer: the gap that breaks one capsule into two. */
 @Composable
 fun IosToolbarSpacer() = Box(Modifier.padding(horizontal = 3.dp))

@@ -334,3 +334,33 @@ fun IosCheckmark(modifier: Modifier = Modifier, color: Color = Color.Unspecified
         )
     }
 }
+
+/**
+ * Anchors a menu to [content], opening it below on tap — SwiftUI's Menu.
+ */
+@Composable
+fun IosMenuAnchor(
+    sections: List<IosMenuSection>,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier) {
+        Box(Modifier.clickable { onExpandedChange(true) }) { content() }
+
+        if (expanded) {
+            Popup(
+                onDismissRequest = { onExpandedChange(false) },
+                properties = PopupProperties(focusable = true),
+            ) {
+                CompositionLocalProvider(
+                    LocalIosTextStyle provides IosTheme.typography.body,
+                    LocalIosContentColor provides IosMenuMaterial.colors.label,
+                ) {
+                    IosMenu(sections, onDismissRequest = { onExpandedChange(false) })
+                }
+            }
+        }
+    }
+}

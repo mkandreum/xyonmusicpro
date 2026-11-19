@@ -478,6 +478,7 @@ fun AlbumScreen(
 
             if (filteredSongs.isNotEmpty()) {
 
+
                 itemsIndexed(
                     items = filteredSongs,
                     key = { _, song -> song.id },

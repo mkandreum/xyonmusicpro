@@ -165,6 +165,24 @@ fun DiyPlayerMockup(
 }
 
 /**
+ * The mockup's actual rendered width for [orientation] within a [maxWidth]x[maxHeight] area —
+ * the same scale formula [DiyDesignCanvas] computes internally, exposed so sibling UI (the
+ * editor's floating control pills) can match the mockup's real on-screen bounds. Without this,
+ * fillMaxWidth() controls stretch to the full physical screen while the mockup itself letterboxes
+ * narrower and centered on anything wider than a phone (tab view, tablet) — the pills end up
+ * pinned to the screen edges, visually disconnected from the canvas they control.
+ */
+fun diyMockupRenderedWidth(orientation: DiyOrientation, maxWidth: Dp, maxHeight: Dp): Dp {
+    val design = if (orientation == DiyOrientation.PORTRAIT) {
+        DpSize(DESIGN_SHORT_EDGE, DESIGN_LONG_EDGE)
+    } else {
+        DpSize(DESIGN_LONG_EDGE, DESIGN_SHORT_EDGE)
+    }
+    val scale = min(maxWidth / design.width, maxHeight / design.height)
+    return design.width * scale
+}
+
+/**
  * Lays out the mockup and real sticker layer on the same virtual canvas and centered scale.
  * Sticker coordinates then resolve to the same positions in both places.
  */

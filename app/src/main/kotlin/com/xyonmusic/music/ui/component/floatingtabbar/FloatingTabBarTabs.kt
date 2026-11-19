@@ -594,3 +594,39 @@ internal fun AnimatedVisibilityScope.labelAlpha(): State<Float> =
         label = "labelAlpha",
     ) { if (it == EnterExitState.Visible) 1f else 0f }
 
+/**
+ * A custom modifier that provides smooth enter/exit animations with fade and blur effects.
+ */
+@Composable
+internal fun Modifier.animateEnterExitTab(
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope
+): Modifier = with(sharedTransitionScope) {
+    with(animatedVisibilityScope) {
+        val enterStartFraction = 0.5f
+        val enterEndFraction = 0.8f
+        val durationMs = 150
+
+        val animatedAlpha by transition.animateFloat(
+            transitionSpec = {
+                keyframes {
+                    durationMillis = durationMs
+                    if (targetState == EnterExitState.Visible) {
+                        0f atFraction enterStartFraction using FastOutSlowInEasing
+                        1f atFraction enterEndFraction
+                    }
+                }
+            }
+        ) { targetState ->
+            when (targetState) {
+                EnterExitState.Visible -> 1f
+                else -> 0f
+            }
+        }
+
+        graphicsLayer {
+            // Let the shared bounds animation handle movement; fade labels without a second transform.
+            alpha = animatedAlpha
+        }
+    }
+}

@@ -214,6 +214,698 @@ val GoogleSansFlex = FontFamily(
     )
 )
 
+@OptIn(ExperimentalTextApi::class)
+@Composable
+fun WelcomePagerScreen(onFinished: () -> Unit) {
+    val context = LocalContext.current
+    val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
+    val commonAnimSpec = tween<Float>(durationMillis = 200, easing = FastOutSlowInEasing)
+    val commonDpAnimSpec = tween<Dp>(durationMillis = 200, easing = FastOutSlowInEasing)
+
+    val topCardShape =
+        RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp, bottomStart = 4.dp, bottomEnd = 4.dp)
+    val middleCardShape = RoundedCornerShape(4.dp)
+    val bottomCardShape =
+        RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp, bottomStart = 20.dp, bottomEnd = 20.dp)
+
+    val customWelcomeFontFamily = FontFamily(
+        Font(
+            resId = com.xyonmusic.music.R.font.sans_flex,
+            variationSettings = FontVariation.Settings(
+                FontVariation.slant(-9f),
+                FontVariation.width(111f),
+                FontVariation.weight(333),
+                FontVariation.Setting("GRAD", 100f),
+                FontVariation.Setting("ROND", 100f)
+            )
+        )
+    )
+
+    val thinHeaderStyle = TextStyle(
+        fontFamily = customWelcomeFontFamily,
+        fontSize = 48.sp
+    )
+
+    var hasNotificationPermission by remember {
+        mutableStateOf(
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+            } else true
+        )
+    }
+
+    var canInstallPackages by remember {
+        mutableStateOf(
+            if (BuildConfig.FLAVOR.contains("gms") && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                runCatching { context.packageManager.canRequestPackageInstalls() }.getOrDefault(false)
+            } else true
+        )
+    }
+
+    var isLastPageScrolledToEnd by remember { mutableStateOf(true) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    hasNotificationPermission = ContextCompat.checkSelfPermission(
+                        context,
+                        Manifest.permission.POST_NOTIFICATIONS
+                    ) == PackageManager.PERMISSION_GRANTED
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    canInstallPackages = runCatching { context.packageManager.canRequestPackageInstalls() }.getOrDefault(false)
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val notificationLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { isGranted ->
+            hasNotificationPermission = isGranted
+        }
+    )
+
+    val installParamsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            canInstallPackages = runCatching { context.packageManager.canRequestPackageInstalls() }.getOrDefault(false)
+        }
+    }
+
+    val pages = listOf(
+        OnboardingPageInfo(
+            content = { _ ->
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Spacer(modifier = Modifier.height(80.dp))
+
+                    Text(
+                        text = stringResource(com.xyonmusic.music.R.string.welcome_to),
+                        style = thinHeaderStyle,
+                        color = AppTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = stringResource(com.xyonmusic.music.R.string.app_name).uppercase(),
+                        fontFamily = GoogleSansFlex,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 48.sp,
+                        color = AppTheme.colorScheme.primary,
+                        lineHeight = 56.sp
+                    )
+
+                    val flavorSuffix = if (BuildConfig.FLAVOR.contains("gms", ignoreCase = true)) "Gms Edition" else "Foss Edition"
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(start = 2.dp)
+                    ) {
+                        Text(
+                            text = flavorSuffix,
+                            fontFamily = GoogleSansFlex,
+                            style = AppTheme.typography.titleMedium,
+                            color = AppTheme.colorScheme.secondary
+                        )
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Surface(
+                            shape = CircleShape,
+                            color = AppTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = "v${BuildConfig.VERSION_NAME}",
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                style = AppTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = AppTheme.colorScheme.onSecondaryContainer
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        RotatingShapeContainer(
+                            modifier = Modifier.size(280.dp)
+                        )
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        Text(
+                            text = stringResource(com.xyonmusic.music.R.string.welcome_preparing_subtitle),
+                            fontFamily = GoogleSansFlex,
+                            style = AppTheme.typography.bodyLarge,
+                            color = AppTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    Spacer(modifier = Modifier.weight(1.2f))
+                }
+            }
+        ),
+        OnboardingPageInfo(
+            content = { _ ->
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Spacer(modifier = Modifier.height(80.dp))
+
+                    Text(
+                        text = stringResource(com.xyonmusic.music.R.string.perm_required),
+                        style = thinHeaderStyle,
+                        color = AppTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = stringResource(com.xyonmusic.music.R.string.perm_permissions),
+                        fontFamily = GoogleSansFlex,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 48.sp,
+                        color = AppTheme.colorScheme.primary,
+                        lineHeight = 56.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = stringResource(com.xyonmusic.music.R.string.perm_intro_text),
+                        style = AppTheme.typography.bodyLarge.copy(
+                            fontFamily = GoogleSansFlex
+                        ),
+                        color = AppTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        PermissionCard(
+                            icon = rememberVectorPainter(Icons.Rounded.Notifications),
+                            iconColor = Color(0xFFffaee4),
+                            iconTint = Color(0xFF8d0053),
+                            title = stringResource(com.xyonmusic.music.R.string.perm_notif_title),
+                            description = stringResource(com.xyonmusic.music.R.string.perm_notif_desc),
+                            shape = if (BuildConfig.FLAVOR.contains("gms", ignoreCase = true)) topCardShape else RoundedCornerShape(20.dp),
+                            control = {
+                                Switch(
+                                    checked = hasNotificationPermission,
+                                    onCheckedChange = {
+                                        if (hasNotificationPermission) {
+                                            val intent =
+                                                Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                                    putExtra(
+                                                        Settings.EXTRA_APP_PACKAGE,
+                                                        context.packageName
+                                                    )
+                                                }
+                                            context.startActivity(intent)
+                                        } else {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                                notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                            }
+                                        }
+                                    }
+                                )
+                            },
+                            onClick = {
+                                if (hasNotificationPermission) {
+                                    val intent =
+                                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                            putExtra(
+                                                Settings.EXTRA_APP_PACKAGE,
+                                                context.packageName
+                                            )
+                                        }
+                                    context.startActivity(intent)
+                                } else {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                        notificationLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                    }
+                                }
+                            }
+                        )
+
+                        if (BuildConfig.FLAVOR.contains("gms", ignoreCase = true)) {
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            PermissionCard(
+                                icon = rememberVectorPainter(Icons.Rounded.SystemUpdate),
+                                iconColor = Color(0xFFffb683),
+                                iconTint = Color(0xFF753403),
+                                title = stringResource(com.xyonmusic.music.R.string.perm_install_title),
+                                description = stringResource(com.xyonmusic.music.R.string.perm_install_desc),
+                                shape = bottomCardShape,
+                                control = {
+                                    SymbolIcon(symbol = if (canInstallPackages) sf("checkmark") else sf("chevron.right"), contentDescription = null, tint = if (canInstallPackages) AppTheme.colorScheme.primary else AppTheme.colorScheme.onSurfaceVariant)
+                                },
+                                onClick = {
+                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                                        val intent =
+                                            Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
+                                                data = Uri.parse("package:${context.packageName}")
+                                            }
+                                        installParamsLauncher.launch(intent)
+                                    }
+                                }
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(100.dp))
+                    }
+                }
+            }
+        ),
+        OnboardingPageInfo(
+            content = { _ ->
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Spacer(modifier = Modifier.height(80.dp))
+
+                    Text(
+                        text = "Join our",
+                        style = thinHeaderStyle,
+                        color = AppTheme.colorScheme.onBackground
+                    )
+                    Text(
+                        text = "Community",
+                        fontFamily = GoogleSansFlex,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 48.sp,
+                        color = AppTheme.colorScheme.primary,
+                        lineHeight = 56.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text(
+                        text = "XyonMusic is open-source and depends on community support to grow. Your help makes a difference!",
+                        style = AppTheme.typography.bodyLarge.copy(
+                            fontFamily = GoogleSansFlex
+                        ),
+                        color = AppTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        PermissionCard(
+                            icon = rememberVectorPainter(Icons.Rounded.Star),
+                            iconColor = Color(0xFFfff1a8),
+                            iconTint = Color(0xFF8d6e00),
+                            title = "Star on GitHub",
+                            description = "Help us reach more people by starring our repository.",
+                            shape = topCardShape,
+                            control = {
+                                SymbolIcon(symbol = sf("chevron.right"), contentDescription = null, tint = AppTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                uriHandler.safeOpenUri(context, "https://github.com/mkandreum/xyonmusicpro")
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(2.dp))
+
+                        PermissionCard(
+                            icon = rememberVectorPainter(SfSymbols.Monochrome.SFEllipsisBubble),
+                            iconColor = Color(0xFF67d4ff),
+                            iconTint = Color(0xFF004e5d),
+                            title = "Join Discord",
+                            description = "Get the latest updates and chat with the community.",
+                            shape = bottomCardShape,
+                            control = {
+                                SymbolIcon(symbol = sf("chevron.right"), contentDescription = null, tint = AppTheme.colorScheme.onSurfaceVariant)
+                            },
+                            onClick = {
+                                uriHandler.safeOpenUri(context, "https://discord.gg/Ejeb4cmzfd")
+                            }
+                        )
+
+                        Spacer(modifier = Modifier.height(100.dp))
+                    }
+                }
+            }
+        ),
+        OnboardingPageInfo(
+            content = { onUpdateScroll ->
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.Start
+                ) {
+                    Spacer(modifier = Modifier.height(80.dp))
+
+                    Column(modifier = Modifier.padding(bottom = 16.dp)) {
+                        Text(
+                            text = stringResource(com.xyonmusic.music.R.string.feat_discover),
+                            style = thinHeaderStyle,
+                            color = AppTheme.colorScheme.onBackground
+                        )
+                        Text(
+                            text = stringResource(com.xyonmusic.music.R.string.feat_features),
+                            fontFamily = GoogleSansFlex,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 48.sp,
+                            color = AppTheme.colorScheme.primary,
+                            lineHeight = 56.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Text(
+                            text = stringResource(com.xyonmusic.music.R.string.feat_intro),
+                            style = AppTheme.typography.bodyLarge.copy(
+                                fontFamily = GoogleSansFlex
+                            ),
+                            color = AppTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Box(modifier = Modifier.weight(1f)) {
+                        val scrollState = rememberScrollState()
+
+                        val isAtBottom by remember {
+                            derivedStateOf {
+                                val layoutInfo = scrollState.maxValue
+                                layoutInfo == 0 || scrollState.value >= (layoutInfo - 20)
+                            }
+                        }
+
+                        LaunchedEffect(isAtBottom) {
+                            onUpdateScroll(isAtBottom)
+                        }
+
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .verticalScroll(scrollState)
+                        ) {
+                            FeatureCard(
+                                icon = rememberVectorPainter(Icons.Rounded.Lyrics),
+                                iconColor = Color(0xFFffaee4),
+                                iconTint = Color(0xFF8d0053),
+                                title = stringResource(com.xyonmusic.music.R.string.feat_lyrics_title),
+                                description = stringResource(com.xyonmusic.music.R.string.feat_lyrics_desc),
+                                shape = topCardShape
+                            )
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            FeatureCard(
+                                icon = rememberVectorPainter(Icons.Rounded.CloudDownload),
+                                iconColor = Color(0xFF80da88),
+                                iconTint = Color(0xFF00522c),
+                                shape = middleCardShape,
+                                title = stringResource(com.xyonmusic.music.R.string.feat_download_title),
+                                description = stringResource(com.xyonmusic.music.R.string.feat_download_desc)
+                            )
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            FeatureCard(
+                                icon = rememberVectorPainter(Icons.Rounded.HighQuality),
+                                iconColor = Color(0xFFffb683),
+                                iconTint = Color(0xFF753403),
+                                title = stringResource(com.xyonmusic.music.R.string.feat_quality_title),
+                                description = stringResource(com.xyonmusic.music.R.string.feat_quality_desc),
+                                shape = middleCardShape
+                            )
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            FeatureCard(
+                                icon = rememberVectorPainter(Icons.Rounded.BlurOn),
+                                iconColor = Color(0xFFcabeff),
+                                iconTint = Color(0xFF1c0062),
+                                title = stringResource(com.xyonmusic.music.R.string.feat_glass_title),
+                                description = stringResource(com.xyonmusic.music.R.string.feat_glass_desc),
+                                shape = middleCardShape
+                            )
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            FeatureCard(
+                                icon = rememberVectorPainter(Icons.Rounded.Forum),
+                                iconColor = Color(0xFF67d4ff),
+                                iconTint = Color(0xFF004e5d),
+                                title = stringResource(com.xyonmusic.music.R.string.feat_discord_title),
+                                description = stringResource(com.xyonmusic.music.R.string.feat_discord_desc),
+                                shape = middleCardShape
+                            )
+
+                            if (BuildConfig.FLAVOR.contains("gms", ignoreCase = true)) {
+                                Spacer(modifier = Modifier.height(2.dp))
+
+                                FeatureCard(
+                                    icon = rememberVectorPainter(Icons.Rounded.SystemUpdate),
+                                    iconColor = Color(0xFF67d4ff),
+                                    iconTint = Color(0xFF004e5d),
+                                    title = stringResource(com.xyonmusic.music.R.string.feat_update_title),
+                                    description = stringResource(com.xyonmusic.music.R.string.feat_update_desc),
+                                    shape = middleCardShape
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            FeatureCard(
+                                icon = rememberVectorPainter(Icons.Rounded.Gavel),
+                                iconColor = Color(0xFFb6c6ed),
+                                iconTint = Color(0xFF001b3f),
+                                title = stringResource(com.xyonmusic.music.R.string.feat_license_title),
+                                description = stringResource(com.xyonmusic.music.R.string.feat_license_desc),
+                                shape = middleCardShape
+                            )
+
+                            Spacer(modifier = Modifier.height(2.dp))
+
+                            FeatureCard(
+                                icon = rememberVectorPainter(Icons.Rounded.Terminal),
+                                iconColor = Color(0xFFcabeff),
+                                iconTint = Color(0xFF1c0062),
+                                title = stringResource(com.xyonmusic.music.R.string.feat_github_title),
+                                description = stringResource(com.xyonmusic.music.R.string.feat_github_desc),
+                                shape = bottomCardShape
+                            )
+
+                            Spacer(modifier = Modifier.height(100.dp))
+                        }
+                    }
+                }
+            }
+        )
+    )
+
+    val pagerState = rememberPagerState(pageCount = { pages.size })
+    val isFirstPage = pagerState.currentPage == 0
+    val isLastPage = pagerState.currentPage == pages.size - 1
+
+    BackHandler(enabled = !isFirstPage) {
+        scope.launch {
+            pagerState.animateScrollToPage(
+                pagerState.currentPage - 1,
+                animationSpec = commonAnimSpec
+            )
+        }
+    }
+
+    val glassBackdrop = io.github.mkandreum.liquidbar.glass.rememberGlassBackdrop()
+    Box(Modifier.fillMaxSize()) {
+    Box(
+        Modifier
+            .fillMaxSize()
+            .glassSource(glassBackdrop)
+    ) {
+        OnboardingAurora(position = { pagerState.currentPage + pagerState.currentPageOffsetFraction })
+    }
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.TopCenter
+    ) {
+        Column(
+            modifier = Modifier
+                .widthIn(max = 700.dp)
+                .fillMaxSize()
+                .padding(24.dp)
+        ) {
+            HorizontalPager(
+                state = pagerState,
+                userScrollEnabled = false,
+                // Four light pages: compose them all up front. With the default (0) the next
+                // page is composed the moment the transition starts, on the UI thread, in the
+                // middle of the animation.
+                beyondViewportPageCount = pages.size - 1,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+            ) { index ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .graphicsLayer {
+                            // iOS-style crossfade: the outgoing page shrinks slightly and
+                            // slides out while the incoming page does the reverse, driven by
+                            // the pager's own scroll so it plays during animateScrollToPage.
+                            // No RenderEffect blur: a full-page blur per frame blows the budget.
+                            val pageOffset = pagerState.getOffsetDistanceInPages(index)
+                            val absOffset = pageOffset.absoluteValue.coerceIn(0f, 1f)
+                            alpha = 1f - absOffset
+                            translationX = pageOffset * size.width * 0.2f
+                            scaleX = 1f - absOffset * 0.08f
+                            scaleY = 1f - absOffset * 0.08f
+                        }
+                ) {
+                    pages[index].content { scrolledToEnd ->
+                        if (index == pages.size - 1) {
+                            isLastPageScrolledToEnd = true
+                        }
+                    }
+                }
+            }
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                pages.indices.forEach { index ->
+                    val selected = index == pagerState.currentPage
+                    val dotWidth by animateDpAsState(
+                        targetValue = if (selected) 20.dp else 6.dp,
+                        animationSpec = commonDpAnimSpec,
+                        label = "dotWidth"
+                    )
+                    Box(
+                        modifier = Modifier
+                            .padding(horizontal = 3.dp)
+                            .height(6.dp)
+                            .width(dotWidth)
+                            .clip(RoundedCornerShape(50))
+                            .background(
+                                if (selected) Color.White
+                                else Color.White.copy(alpha = 0.28f)
+                            )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            val backButtonWeight by animateFloatAsState(
+                targetValue = if (isFirstPage) 0.0001f else 1f,
+                animationSpec = commonAnimSpec,
+                label = "backWeight"
+            )
+
+            val spacerWeight by animateFloatAsState(
+                targetValue = if (isFirstPage) 0.0001f else 0.05f,
+                animationSpec = commonAnimSpec,
+                label = "spacerWeight"
+            )
+
+            val alphaBack by animateFloatAsState(
+                targetValue = if (isFirstPage) 0f else 1f,
+                animationSpec = commonAnimSpec,
+                label = "backAlpha"
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 24.dp)
+                    .height(64.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(backButtonWeight)
+                        .fillMaxHeight()
+                        .alpha(alphaBack)
+                ) {
+                    WelcomeExpressiveButton(
+                        text = stringResource(com.xyonmusic.music.R.string.back_button_desc),
+                        onClick = {
+                            if (!isFirstPage) {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(
+                                        pagerState.currentPage - 1,
+                                        animationSpec = commonAnimSpec
+                                    )
+                                }
+                            }
+                        },
+                        containerColor = Color.Transparent,
+                        contentColor = Color.White.copy(alpha = 0.85f),
+                        modifier = Modifier.fillMaxSize(),
+                        backdrop = glassBackdrop,
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(spacerWeight))
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                ) {
+                    val isNextEnabled = !isLastPage || isLastPageScrolledToEnd
+
+                    val alphaNext by animateFloatAsState(
+                        targetValue = if (isNextEnabled) 1f else 0.5f,
+                        label = "nextAlpha"
+                    )
+
+                    WelcomeExpressiveButton(
+                        text = if (isLastPage) stringResource(com.xyonmusic.music.R.string.get_started) else stringResource(
+                            com.xyonmusic.music.R.string.next
+                        ),
+                        onClick = {
+                            if (isLastPage) {
+                                if (isLastPageScrolledToEnd) onFinished()
+                            } else {
+                                scope.launch {
+                                    pagerState.animateScrollToPage(
+                                        pagerState.currentPage + 1,
+                                        animationSpec = commonAnimSpec
+                                    )
+                                }
+                            }
+                        },
+                        containerColor = Color(0xFF8FA8FF).copy(alpha = 0.55f * alphaNext),
+                        contentColor = Color.White.copy(alpha = alphaNext),
+                        modifier = Modifier.fillMaxSize(),
+                        backdrop = glassBackdrop,
+                    )
+                }
+            }
+        }
+    }
+    }
+}
+
 @Composable
 fun RotatingShapeContainer(modifier: Modifier = Modifier) {
     val infiniteTransition = rememberInfiniteTransition(label = "shapeRotation")

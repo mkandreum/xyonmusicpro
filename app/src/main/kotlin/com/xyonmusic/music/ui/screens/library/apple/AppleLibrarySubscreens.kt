@@ -1085,3 +1085,30 @@ private fun SongDownloadState(song: Song, download: androidx.media3.exoplayer.of
         }
     }
 }
+
+@Composable
+private fun EmptyNote(text: String) {
+    Text(
+        text,
+        style = SfStyle(15.sp, 20.sp).copy(textAlign = androidx.compose.ui.text.style.TextAlign.Center),
+        color = IosTheme.colors.secondaryLabel,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 32.dp, vertical = 48.dp),
+    )
+}
+
+@Composable
+private fun PlayButton(icon: SfSymbol, label: String, modifier: Modifier, onClick: () -> Unit) {
+    Row(
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier
+            .height(50.dp)
+            .clip(CircleShape)
+            .background(Color(0xFF767680).copy(alpha = 0.12f))
+            .iosRowPress(onClick = onClick),
+    ) {
+        IosGlyph(icon, IosTheme.tint, 17.dp)
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = SfStyle(17.sp, 22.sp, tracking = (-0.43).sp), color = IosTheme.tint)
+    }
+}

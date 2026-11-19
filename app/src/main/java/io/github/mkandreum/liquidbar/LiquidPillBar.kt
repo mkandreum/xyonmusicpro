@@ -98,6 +98,231 @@ object LiquidPillDefaults {
     ) = LiquidPillColors(accent, onAccent, content)
 }
 
+/**
+ * Barra fina en píldora: pestañas de icono que, activas, se expanden en cápsula con su etiqueta, y un hueco
+ * central opcional ([center], p. ej. un botón +). La cápsula activa es una lente de cristal: al tocar otra
+ * pestaña viaja con un muelle que se pasa un poco y vuelve, estirándose con la velocidad; mantenida pulsada
+ * crece, se vuelve transparente y refracta (con aberración cromática) el fondo y los iconos que pisa; y se
+ * puede arrastrar de una pestaña a otra: al soltar se asienta en la más cercana.
+ *
+ * Las pestañas se reparten mitad a la izquierda del hueco central y mitad a la derecha.
+ */
+@Composable
+fun LiquidPillBar(
+    backdrop: GlassBackdrop,
+    items: List<LiquidBarItem>,
+    selectedIndex: Int,
+    onSelect: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+    colors: LiquidPillColors = LiquidPillDefaults.colors(),
+    glass: LiquidGlassStyle = LiquidGlassStyle.Dark,
+    labelStyle: TextStyle = LiquidPillDefaults.LabelStyle,
+    center: (@Composable () -> Unit)? = null,
+) {
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val select by rememberUpdatedState(onSelect)
+    val glow = remember(scope) { GlassGlow(scope) }
+    val surfaceBackdrop = rememberGlassBackdrop()
+    val tabsBackdrop = rememberGlassBackdrop()
+    val half = items.size / 2
+
+    // Posición y anchura de cada pestaña dentro de la fila (px), medidas en cada fotograma.
+    val lefts = remember(items.size) { mutableStateListOf(*Array(items.size) { 0f }) }
+    val widths = remember(items.size) { mutableStateListOf(*Array(items.size) { 0f }) }
+    var centerWidth by remember { mutableIntStateOf(0) }
+    var measured by remember { mutableStateOf(false) }
+
+    // La lente: centro x, anchura, presión. Muelles con algo de rebote; la presión, rígida.
+    val x = remember { Animatable(0f) }
+    val w = remember { Animatable(0f) }
+    val press = remember { Animatable(0f, 0.001f) }
+    var dragging by remember { mutableStateOf(false) }
+    var hovered by remember { mutableIntStateOf(selectedIndex) }
+    val travel = spring<Float>(dampingRatio = 0.62f, stiffness = 420f)
+    val stretch = spring<Float>(dampingRatio = 0.5f, stiffness = 420f)
+
+    fun centreOf(i: Int) = lefts[i] + widths[i] / 2f
+    fun nearestTo(cx: Float) = items.indices.minByOrNull { abs(centreOf(it) - cx) } ?: 0
+
+    // Pestaña a la que va la lente. Al soltar un arrastre apunta a donde se soltó hasta que la app confirma la
+    // selección (o, si no la acepta, durante un instante): así no da un tirón hacia la pestaña anterior.
+    val currentSelected by rememberUpdatedState(selectedIndex)
+    var released by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(selectedIndex) { released = null }
+    LaunchedEffect(released) { if (released != null) { delay(400); released = null } }
+    fun targetIndex() = (released ?: currentSelected).coerceIn(items.indices)
+
+    // Un único dueño de la posición: mientras no se arrastra, la lente va SIEMPRE a su pestaña. collectLatest
+    // reinicia la animación cada vez que cambia el destino (la etiqueta se despliega, otra selección…) y el
+    // Animatable conserva la velocidad. Antes la posición la movían tres sitios que podían pisarse y la lente
+    // se quedaba a medio camino con la anchura de la nueva pestaña.
+    LaunchedEffect(items.size) {
+        snapshotFlow {
+            val i = targetIndex()
+            Triple(dragging, centreOf(i), widths[i])
+        }.collectLatest { (drag, cx, tw) ->
+            if (drag || tw <= 0f) return@collectLatest
+            if (!measured) { x.snapTo(cx); w.snapTo(tw); measured = true; return@collectLatest }
+            coroutineScope {
+                launch { x.animateTo(cx, travel) }
+                launch { w.animateTo(tw, stretch) }
+            }
+        }
+    }
+    // La lente está «pulsada» mientras se arrastra o mientras viaja hacia su pestaña; al llegar, se suelta.
+    val settleSlop = with(density) { 8.dp.toPx() }
+    val holding by remember {
+        derivedStateOf {
+            // Solo cuenta como viaje si la lente se está moviendo: nunca se queda en lupa estando quieta.
+            dragging || (measured && x.isRunning && abs(x.value - centreOf(targetIndex())) > settleSlop)
+        }
+    }
+    // Un único observador permanente: siempre aplica el último estado, sin depender de recomponer.
+    LaunchedEffect(Unit) {
+        snapshotFlow { holding }.collectLatest { h ->
+            press.animateTo(if (h) 1f else 0f, if (h) spring(1f, 1000f, 0.001f) else spring(1f, 600f, 0.001f))
+        }
+    }
+
+    val lens = Modifier.pointerInput(items.size) {
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            dragging = true
+            try {
+                val minX = lefts.firstOrNull() ?: 0f
+                val maxX = (lefts.lastOrNull() ?: 0f) + (widths.lastOrNull() ?: 0f)
+                while (true) {
+                    val ev = awaitPointerEvent()
+                    val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
+                    if (!ch.pressed) break
+                    val dx = ch.positionChange().x
+                    if (dx != 0f) {
+                        ch.consume()
+                        val nx = (x.value + dx).coerceIn(minX, maxX)
+                        scope.launch { x.snapTo(nx) }
+                        hovered = nearestTo(nx)
+                        scope.launch { w.animateTo(widths[hovered], stretch) }
+                    }
+                }
+                val target = nearestTo(x.value)
+                hovered = target
+                released = target
+                // Siempre avisa: selectedIndex puede estar desfasado dentro del pointerInput y, si la app
+                // arrancó en la primera pestaña, soltar sobre ella no seleccionaba nada.
+                select(target)
+            } finally {
+                // También si el gesto se cancela (otro elemento se queda el dedo, la barra se oculta…):
+                // si se quedaba en true la lente no volvía nunca a su sitio.
+                dragging = false
+            }
+        }
+    }
+
+    val tabRow: @Composable (interactive: Boolean) -> Unit = { interactive ->
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp)
+        ) {
+            items.forEachIndexed { i, item ->
+                if (i == half && center != null) {
+                    if (interactive) Box(Modifier.onSizeChanged { centerWidth = it.width }) { center() }
+                    else Spacer(Modifier.width(with(density) { centerWidth.toDp() }))
+                }
+                PillTab(
+                    item = item,
+                    selected = i == selectedIndex,
+                    colors = colors,
+                    labelStyle = labelStyle,
+                    interactive = interactive,
+                    onClick = { if (i != selectedIndex) select(i) },
+                    modifier = if (interactive) Modifier.onGloballyPositioned {
+                        lefts[i] = it.positionInParent().x; widths[i] = it.size.width.toFloat()
+                    } else Modifier
+                )
+            }
+        }
+    }
+
+    Box(modifier.then(glow.gestureModifier)) {
+    // El cristal de la píldora en su propia capa sin hijos: la lente lo refracta, y si grabara a sus
+    // hijos (la lente incluida) el árbol de render se llamaría a sí mismo.
+    Box(
+        Modifier.matchParentSize()
+            .glassSource(surfaceBackdrop)
+            .liquidGlass(backdrop, CircleShape, glass)
+            .clip(CircleShape)
+            .then(glow.drawModifier)
+    )
+    Box(Modifier.padding(8.dp), contentAlignment = Alignment.CenterStart) {
+        tabRow(true)
+        // Copia invisible de las pestañas: lo que la lente deja ver (y amplía) por encima de su relleno.
+        Box(
+            Modifier.clearAndSetSemantics {}.alpha(0f).glassSource(tabsBackdrop)
+                .graphicsLayer { val s = lerp(1f, 1.12f, press.value); scaleX = s; scaleY = s; transformOrigin = androidx.compose.ui.graphics.TransformOrigin(x.value / size.width.coerceAtLeast(1f), 0.5f) }
+                // Pulsada, la copia se tiñe como en la lente; en reposo el icono/etiqueta ya van sobre el acento.
+                .graphicsLayer { colorFilter = if (press.value > 0.01f) ColorFilter.tint(colors.accent) else null }
+        ) { tabRow(false) }
+
+        if (measured && selectedIndex in items.indices) {
+            val tabH = LiquidPillDefaults.TabHeight
+            val place = Modifier
+                .offset { IntOffset((x.value - w.value / 2f).roundToInt(), 0) }
+                .layout { m, c ->
+                    // Crece al pulsar y se estira con la velocidad del viaje: ancha y baja al acelerar.
+                    val v = (abs(x.velocity) / 5000f).coerceAtMost(0.22f)
+                    val p = press.value
+                    val gw = (w.value * lerp(1f, 1.18f, p) * (1f + v)).roundToInt().coerceAtLeast(1)
+                    val gh = (tabH.toPx() * lerp(1f, 1.3f, p) * (1f - v * 0.45f)).roundToInt().coerceAtLeast(1)
+                    val child = m.measure(Constraints.fixed(gw, gh))
+                    val bw = w.value.roundToInt().coerceAtLeast(1)
+                    val bh = tabH.roundToPx()
+                    layout(bw, bh) { child.place((bw - gw) / 2, (bh - gh) / 2) }
+                }
+            val sources: () -> List<GlassSource> = {
+                val p = press.value.coerceIn(0f, 1f)
+                if (p <= 0f) listOf(GlassSource(backdrop)) else listOf(GlassSource(backdrop), GlassSource(surfaceBackdrop, p))
+            }
+            val tabsOnly = remember(tabsBackdrop) { listOf(GlassSource(tabsBackdrop)) }
+            // 1 · cuerpo de la lente: relleno de acento en reposo que se aclara a cristal al pulsar.
+            Box(
+                place.then(lens).glassSurface(sources, CircleShape) {
+                    val p = press.value.coerceIn(0f, 1f)
+                    GlassLook(
+                        blur = 3.dp.toPx() * (1f - p),
+                        saturation = 1.6f,
+                        refractionHeight = 10.dp.toPx() * p,
+                        refractionAmount = 14.dp.toPx() * p,
+                        dispersion = 0.5f,
+                        depthEffect = true,
+                        surface = colors.accent.copy(alpha = colors.accent.alpha * (1f - 0.82f * p)),
+                        rim = Color.White.copy(alpha = 0.18f + 0.32f * p),
+                        rimWidth = 0.8.dp.toPx(),
+                        shadowAlpha = p,
+                        innerShadowAlpha = p,
+                        innerShadowRadius = 8.dp.toPx() * p,
+                        fallback = colors.accent,
+                    )
+                }
+            )
+            // 2 · las pestañas vistas a través de la lente.
+            Box(
+                place.glassSurface({ tabsOnly }, CircleShape) {
+                    val p = press.value.coerceIn(0f, 1f)
+                    GlassLook(
+                        refractionHeight = 10.dp.toPx() * p,
+                        refractionAmount = 14.dp.toPx() * p,
+                        dispersion = 0.5f,
+                        depthEffect = true,
+                        fallback = Color.Transparent,
+                    )
+                }
+            )
+        }
+    }
+    }
+}
+
 /** Pestaña de la píldora: icono que hace «pop» al activarse y etiqueta que se despliega con muelle. */
 @Composable
 private fun PillTab(

@@ -18,6 +18,15 @@ import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.unit.Density
 import com.xyonmusic.music.ui.component.backdrop.Backdrop
 
+@Composable
+fun rememberCanvasBackdrop(
+    onDraw: DrawScope.() -> Unit
+): Backdrop {
+    return remember(onDraw) {
+        CanvasBackdrop(onDraw)
+    }
+}
+
 @Immutable
 private class CanvasBackdrop(
     val onDraw: DrawScope.() -> Unit

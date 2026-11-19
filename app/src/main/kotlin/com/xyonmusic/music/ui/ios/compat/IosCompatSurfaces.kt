@@ -103,6 +103,24 @@ fun Surface(
     content = content,
 )
 
+/** An iOS grouped card: flat fill, continuous corners, no elevation. */
+@Composable
+fun IosCard(
+    modifier: Modifier = Modifier,
+    shape: Shape = ContinuousRoundedRectangle(IosMetrics.GroupedCornerRadius),
+    color: Color = Color.Unspecified,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    val colors = IosTheme.colors
+    Column(
+        modifier
+            .clip(shape)
+            .background(if (color.isSpecified) color else colors.secondarySystemGroupedBackground)
+    ) {
+        CompositionLocalProvider(LocalContentColor provides colors.label) { content() }
+    }
+}
+
 /** One button of an [IosAlertDialog]. */
 data class IosAlertAction(
     val title: String,

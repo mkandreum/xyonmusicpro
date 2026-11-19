@@ -42,3 +42,21 @@ fun rememberNavTransitionFreeze(currentRoute: String?): NavTransitionFreeze {
     return freeze
 }
 
+/**
+ * Freezes backdrop recording while a pager changes tabs. Observe scroll state
+ * in a coroutine so the draw-phase freeze check does not trigger invalidations.
+ */
+@Composable
+fun rememberPagerTransitionFreeze(pagerState: PagerState): NavTransitionFreeze {
+    val freeze = remember { NavTransitionFreeze() }
+    LaunchedEffect(pagerState) {
+        snapshotFlow { pagerState.isScrollInProgress }
+            .collectLatest { scrolling ->
+                while (scrolling) {
+                    freeze.markTransitionStarted()
+                    withFrameNanos { }
+                }
+            }
+    }
+    return freeze
+}

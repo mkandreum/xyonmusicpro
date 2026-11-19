@@ -183,6 +183,10 @@ fun rememberDiyLayout(): DiyLayout {
     return remember(json) { DiyLayout.fromJson(json) }
 }
 
+/** True when the player should bother rendering a sticker layer at all. */
+@Composable
+fun rememberHasDiyStickers(): Boolean = !rememberDiyLayout().isEmpty
+
 /**
  * Aligns the sticker layer to the shared player frame. Player layouts give this
  * negative-z layer different parent sizes, so it uses root coordinates and offsets

@@ -757,6 +757,7 @@ fun ArtistScreen(
                     }
                 }
 
+
                 if (showLocal) {
                     if (librarySongs.isNotEmpty()) {
                         item(key = "local_songs_title") {

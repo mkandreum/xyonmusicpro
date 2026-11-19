@@ -5,6 +5,7 @@
 
 package com.xyonmusic.music.core.updater
 
+
 import com.xyonmusic.music.ui.component.sf
 import com.xyonmusic.music.ui.component.SymbolIcon
 import android.content.Context
@@ -549,6 +550,7 @@ fun UpdateScreen(navController: NavHostController) {
     }
 }
 
+
 const val PREFS_NAME = "settings"
 const val KEY_AUTO_UPDATE_CHECK = "auto_update_check"
 const val KEY_LAST_CHECKED_TIME = "last_checked_time"
@@ -592,6 +594,9 @@ fun saveUpdateNotificationsSetting(context: Context, enabled: Boolean) {
 fun saveLastCheckedTime(context: Context, timestamp: String) {
     updatePrefs().encode(KEY_LAST_CHECKED_TIME, timestamp)
 }
+
+fun getLastCheckedTime(context: Context): String =
+    updatePrefs().decodeString(KEY_LAST_CHECKED_TIME, "") ?: ""
 
 fun getBetaUpdatesSetting(context: Context): Boolean =
     updatePrefs().decodeBool(KEY_BETA_UPDATES, false)

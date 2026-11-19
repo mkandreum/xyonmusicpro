@@ -89,6 +89,64 @@ private const val DEADBAND_LSTAR = 5f
 private const val CONFIRM_COUNT = 2
 private const val COOLDOWN_MS = 400L
 
+@Composable
+fun rememberChromeToneState(): ChromeToneState {
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val state = remember { ChromeToneState() }
+    val bandPx = with(density) { BAND_DP.dp.roundToPx() }
+    val insetPx = with(density) { INSET_DP.dp.roundToPx() }
+
+    LaunchedEffect(state, lifecycle) {
+        val window = context.findActivity()?.window ?: return@LaunchedEffect
+        var pending: Boolean? = null
+        var pendingCount = 0
+        var lastSwitchAt = 0L
+        var interval = CONFIRM_MS
+        while (true) {
+            delay(interval)
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) {
+                interval = IDLE_MS
+                continue
+            }
+            val rect = state.sampleRect(bandPx, insetPx) ?: continue
+            val lstar = withTimeoutOrNull(TIMEOUT_MS) { state.capture(window, rect) }?.let(::yToLstar) ?: continue
+
+            val current = state.dark
+            if (current == null) {
+                // First reading: decide outright, no hysteresis to honour yet.
+                state.dark = lstar < MID_LSTAR
+                lastSwitchAt = SystemClock.uptimeMillis()
+                interval = IDLE_MS
+                continue
+            }
+            val threshold = if (current) MID_LSTAR + DEADBAND_LSTAR else MID_LSTAR - DEADBAND_LSTAR
+            val want = if (current) lstar <= threshold else lstar < threshold
+            if (want == current) {
+                pending = null
+                pendingCount = 0
+                interval = if (abs(lstar - threshold) < NEAR_BAND_LSTAR) NEAR_MS else IDLE_MS
+                continue
+            }
+            interval = CONFIRM_MS
+            if (pending != want) {
+                pending = want
+                pendingCount = 1
+            } else {
+                pendingCount++
+            }
+            if (pendingCount < CONFIRM_COUNT) continue
+            val now = SystemClock.uptimeMillis()
+            if (now - lastSwitchAt < COOLDOWN_MS) continue
+            state.dark = want
+            pendingCount = 0
+            lastSwitchAt = now
+        }
+    }
+    return state
+}
+
 /** One PixelCopy of [rect]; linear-light mean luminance, or null on any failure. */
 private suspend fun ChromeToneState.capture(window: Window, rect: Rect): Float? =
     suspendCancellableCoroutine { cont ->

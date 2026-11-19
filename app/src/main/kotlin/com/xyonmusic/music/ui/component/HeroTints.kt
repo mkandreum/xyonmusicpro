@@ -108,6 +108,14 @@ fun Color.asSoftIconTint(): Color {
     return Color(androidx.core.graphics.ColorUtils.HSLToColor(hsl))
 }
 
+/** Glass surface fill for ambient screens: the neutral frost grey carried
+ *  20% toward the mesh hue, so the surface feels tinted without going
+ *  colorful. Painted at ~0.36 opacity by [Modifier.liquidGlass]. */
+fun Color.asAmbientSurfaceTint(isDark: Boolean = true): Color {
+    val frosted = asGlassSurfaceTint(isDark)
+    return lerpColor(frosted, this, 0.20f)
+}
+
 /** Selection-pill wash: lighter than the ambient surface with a hint more of
  *  the mesh hue. Alpha is picked at the call site by contrast (0.70 on light
  *  ambient, 0.80 on dark). */
@@ -180,6 +188,9 @@ suspend fun heroPaletteOf(context: Context, url: String): HeroPalette? {
         }
     }
 }
+
+/** The flat background half of [heroPaletteOf] — every existing caller only wants this. */
+suspend fun heroTintOf(context: Context, url: String): Color? = heroPaletteOf(context, url)?.background
 
 /**
  * Starts extracting [url]'s palette now, off any composition.

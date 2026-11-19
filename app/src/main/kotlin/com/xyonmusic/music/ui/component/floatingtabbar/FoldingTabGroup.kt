@@ -316,3 +316,35 @@ internal fun FoldingTabGroup(
     }
 }
 
+/** One cell of [FoldingTabGroup]: icon over title, scaled with the slot while pressed. */
+@Composable
+internal fun RowScope.FoldingTabCell(
+    onClick: () -> Unit,
+    onLongClick: ((Rect) -> Unit)?,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
+) {
+    val scale = LocalLiquidBottomTabScale.current
+    var bounds by remember { androidx.compose.runtime.mutableStateOf(Rect.Zero) }
+    androidx.compose.foundation.layout.Column(
+        Modifier
+            .clip(ContinuousCapsule)
+            .onGloballyPositioned { bounds = it.boundsInWindow() }
+            .combinedClickable(
+                interactionSource = null,
+                indication = null,
+                role = Role.Tab,
+                onClick = onClick,
+                onLongClick = onLongClick?.let { { it(bounds) } },
+            )
+            .fillMaxHeight()
+            .weight(1f)
+            .graphicsLayer {
+                val s = scale()
+                scaleX = s
+                scaleY = s
+            },
+        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        content = content,
+    )
+}

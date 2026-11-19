@@ -70,6 +70,17 @@ fun getActiveAudioOutput(context: Context): ActiveAudioOutput? {
     return null
 }
 
+fun isBuds(name: String?): Boolean {
+    if (name == null) return false
+    val lowerName = name.lowercase()
+    return lowerName.contains("buds") || 
+           lowerName.contains("airpods") || 
+           lowerName.contains("earpods") || 
+           lowerName.contains("earphone") ||
+           lowerName.contains("freebuds") ||
+           lowerName.contains("pods")
+}
+
 fun isSpeaker(name: String?): Boolean {
     if (name == null) return false
     val lowerName = name.lowercase()

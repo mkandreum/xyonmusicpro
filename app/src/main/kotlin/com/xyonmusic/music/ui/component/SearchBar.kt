@@ -64,6 +64,91 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.xyonmusic.music.constants.AppBarHeight
 
+@ExperimentalMaterial3Api
+@Composable
+fun TopSearch(
+    query: TextFieldValue,
+    onQueryChange: (TextFieldValue) -> Unit,
+    onSearch: (String) -> Unit,
+    active: Boolean,
+    onActiveChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    placeholder: @Composable (() -> Unit)? = null,
+    leadingIcon: @Composable (() -> Unit)? = null,
+    trailingIcon: @Composable (() -> Unit)? = null,
+    shape: Shape? = null,
+    colors: TopAppBarColors = TopAppBarDefaults.topAppBarColors(
+        containerColor = AppTheme.colorScheme.surfaceContainerLow
+    ),
+    scrollBehavior: TopAppBarScrollBehavior? = null,
+    windowInsets: WindowInsets = WindowInsets.systemBars,
+    interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    content: @Composable ColumnScope.() -> Unit = {},
+) {
+    Box(modifier = modifier) {
+        TopAppBar(
+            title = {
+                SearchBarInputField(
+                    query = query,
+                    onQueryChange = onQueryChange,
+                    onSearch = onSearch,
+                    active = active,
+                    onActiveChange = onActiveChange,
+                    enabled = enabled,
+                    placeholder = placeholder,
+                    // Icons are handled in navigationIcon and actions if preferred, or here for inline
+                    leadingIcon = null,
+                    trailingIcon = null,
+                    colors = TextFieldDefaults.colors(
+                        focusedTextColor = AppTheme.colorScheme.onSurface,
+                        unfocusedTextColor = AppTheme.colorScheme.onSurfaceVariant,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        cursorColor = AppTheme.colorScheme.primary,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent
+                    ),
+                    interactionSource = interactionSource,
+                    focusRequester = focusRequester,
+                )
+            },
+            navigationIcon = {
+                if (leadingIcon != null) {
+                    leadingIcon()
+                }
+            },
+            actions = {
+                if (trailingIcon != null) {
+                    trailingIcon()
+                }
+            },
+            colors = colors,
+            scrollBehavior = scrollBehavior,
+            windowInsets = windowInsets
+        )
+        
+        if (active) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = AppBarHeight + windowInsets.asPaddingValues().calculateTopPadding())
+                    .background(AppTheme.colorScheme.surface)
+            ) {
+                 Column {
+                    content()
+                 }
+            }
+            
+            BackHandler(enabled = active) {
+                onActiveChange(false)
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun SearchBarInputField(
