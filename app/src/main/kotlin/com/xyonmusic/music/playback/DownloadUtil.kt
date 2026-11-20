@@ -519,6 +519,8 @@ constructor(
         while (cause != null && depth < 8) {
             val message = cause.message.orEmpty()
             when {
+                message.contains("edad", ignoreCase = true) || message.contains("confirm your age", ignoreCase = true) ->
+                    return "canción +18: YouTube pide una cuenta con la edad verificada"
                 message.contains("bot", ignoreCase = true) || message.contains("Inicia sesión", ignoreCase = true) ||
                     message.contains("Sign in", ignoreCase = true) -> return "YouTube pide verificar que no eres un bot"
                 cause is HttpDataSource.InvalidResponseCodeException ->

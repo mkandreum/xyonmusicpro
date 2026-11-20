@@ -102,6 +102,18 @@ private fun isAgeRestrictedStatus(status: String): Boolean =
         status == "AGE_VERIFICATION_REQUIRED" ||
         status == "CONTENT_CHECK_REQUIRED"
 
+/**
+ * YouTube now gates +18 videos with a plain LOGIN_REQUIRED whose reason asks to confirm the age
+ * ("Inicia sesión y confirma tu edad" / "Sign in to confirm your age"). The status alone looked like
+ * the bot check, so the signed-in path for age-restricted videos was never taken.
+ */
+internal fun isAgeGate(status: String?, reason: String?): Boolean {
+    if (status != null && isAgeRestrictedStatus(status)) return true
+    if (status != "LOGIN_REQUIRED" || reason == null) return false
+    val r = reason.lowercase()
+    return "edad" in r || "age" in r || "inappropriate" in r || "inapropiado" in r
+}
+
 private val SEARCH_QUERY_WHITESPACE = Regex("\\s+")
 private val YOUTUBE_TOPIC_SUFFIX = Regex("(?i)\\s*-\\s*topic\\b")
 private val YOUTUBE_VEVO_SUFFIX = Regex("(?i)\\s*VEVO\\b")
@@ -572,7 +584,7 @@ object YTPlayerUtils {
 
         // ANDROID_VR uses LOGIN_REQUIRED for bot detection, not age gating.
         val mainStatus = mainPlayerResponse.playabilityStatus.status
-        val isAgeRestrictedFromResponse = isAgeRestrictedStatus(mainStatus)
+        val isAgeRestrictedFromResponse = isAgeGate(mainStatus, mainPlayerResponse.playabilityStatus.reason)
         wasOriginallyAgeRestricted = isAgeRestrictedFromResponse
 
         if (isAgeRestrictedFromResponse && isLoggedIn) {
@@ -594,7 +606,7 @@ object YTPlayerUtils {
         var retryMainPlayerResponse: PlayerResponse? = if (usedAgeRestrictedClient != null) mainPlayerResponse else null
 
         val currentStatus = mainPlayerResponse.playabilityStatus.status
-        val isAgeRestricted = isAgeRestrictedStatus(currentStatus)
+        val isAgeRestricted = isAgeGate(currentStatus, mainPlayerResponse.playabilityStatus.reason)
 
         if (isAgeRestricted) {
             Timber.tag(logTag).d("Content is still age-restricted (status: $currentStatus), will try fallback clients")

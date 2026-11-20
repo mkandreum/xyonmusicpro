@@ -3592,6 +3592,8 @@ class MusicService :
                 mediaId.startsWith("/storage/")
             ) return
             if (playerCache.isCached(mediaId, 0, HEAD_PREFETCH_BYTES)) return
+            // A downloaded song is analysed from its file: never ask YouTube for a stream for it.
+            if (downloadCache.isCached(downloadKey(mediaId), 0, 1)) return
             if (!headPrefetchInFlight.add(mediaId)) return
             scope.launch(Dispatchers.IO) {
                 try {
