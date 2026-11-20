@@ -589,13 +589,20 @@ object YTPlayerUtils {
 
         if (isAgeRestrictedFromResponse && isLoggedIn) {
             // Age-restricted: use WEB_CREATOR directly (no NewPipe needed from here)
-            Timber.tag(logTag).d("Age-restricted detected, using WEB_CREATOR")
-            Timber.tag(TAG).i("Age-restricted: using WEB_CREATOR for videoId=$videoId")
-            val creatorResponse = YouTube.player(videoId, playlistId, WEB_CREATOR, null, null).getOrNull()
-            if (creatorResponse?.playabilityStatus?.status == "OK") {
-                Timber.tag(logTag).d("WEB_CREATOR works for age-restricted content")
-                mainPlayerResponse = creatorResponse
-                usedAgeRestrictedClient = WEB_CREATOR
+            // yt-dlp's working recipe for +18 on an age-verified account: the TV client, signed in.
+            // WEB_CREATOR stays as the second try.
+            for (ageClient in listOf(TVHTML5, WEB_CREATOR)) {
+                Timber.tag(TAG).i("Age-restricted: trying ${ageClient.clientName} for videoId=$videoId")
+                PlaybackLogManager.log(PlaybackLogLevel.DEBUG, "Age-restricted: signed-in try", ageClient.clientName)
+                val ageResponse = YouTube.player(videoId, playlistId, ageClient, signatureTimestampFor(ageClient), null).getOrNull()
+                val ageStatus = ageResponse?.playabilityStatus
+                if (ageStatus?.status == "OK") {
+                    PlaybackLogManager.log(PlaybackLogLevel.INFO, "Age-restricted: OK", ageClient.clientName)
+                    mainPlayerResponse = ageResponse
+                    usedAgeRestrictedClient = ageClient
+                    break
+                }
+                PlaybackLogManager.log(PlaybackLogLevel.WARNING, "Age-restricted: ${ageClient.clientName} failed", "${ageStatus?.status}: ${ageStatus?.reason}")
             }
         }
 
