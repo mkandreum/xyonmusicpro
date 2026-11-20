@@ -21,8 +21,8 @@ import com.music.innertube.models.YouTubeClient.Companion.IOS
 import com.music.innertube.models.YouTubeClient.Companion.IPADOS
 import com.music.innertube.models.YouTubeClient.Companion.MOBILE
 import com.music.innertube.models.YouTubeClient.Companion.TVHTML5
-import com.music.innertube.models.YouTubeClient.Companion.TVHTML5_SIMPLY_EMBEDDED_PLAYER
 import com.music.innertube.models.YouTubeClient.Companion.VISIONOS
+import com.music.innertube.models.YouTubeClient.Companion.VISIONOS_1_02
 import com.music.innertube.models.YouTubeClient.Companion.WEB
 import com.music.innertube.models.YouTubeClient.Companion.WEB_CREATOR
 import com.music.innertube.models.YouTubeClient.Companion.WEB_REMIX
@@ -279,6 +279,18 @@ object YTPlayerUtils {
     /** How long a client stays skipped for a video after its URL got a 403. */
     private const val REJECTED_CLIENT_TTL_MS = 30 * 60 * 1000L
 
+    /**
+     * Debug builds only: when `cache/force_client` holds a client name, every other client is skipped, so
+     * one client can be tested on its own. Compiled out of release builds.
+     */
+    private fun debugSkips(client: YouTubeClient): Boolean {
+        if (!com.xyonmusic.music.BuildConfig.DEBUG) return false
+        val forced = runCatching {
+            java.io.File(com.xyonmusic.music.utils.cipher.CipherDeobfuscator.appContext.cacheDir, "force_client").readText().trim()
+        }.getOrNull()
+        return !forced.isNullOrBlank() && forced != client.clientName
+    }
+
     private fun isRejected(videoId: String, client: YouTubeClient): Boolean {
         val until = rejectedClients[videoId]?.get(client.clientName) ?: return false
         return until > System.currentTimeMillis()
@@ -317,13 +329,16 @@ object YTPlayerUtils {
      * and supports more formats when available.
      */
     private val STREAM_FALLBACK_CLIENTS: Array<YouTubeClient> = arrayOf(
+        // Measured from a home network, signed out: only VISIONOS and the TV client serve the whole file
+        // without a PO token. IOS and ANDROID_VR answer "OK" but get a 403 once the first chunk is past,
+        // so they stay after the ones that really work (they remain the "at least it starts" fallback).
         VISIONOS,
+        VISIONOS_1_02,
+        TVHTML5,
         IOS,
         ANDROID_VR_1_61_48,
         ANDROID_VR_1_65_10,
         WEB_REMIX,
-        TVHTML5_SIMPLY_EMBEDDED_PLAYER,  // Try embedded player first for age-restricted content
-        TVHTML5,
         ANDROID_CREATOR,
         IPADOS,
         ANDROID_VR_NO_AUTH,
@@ -910,7 +925,7 @@ object YTPlayerUtils {
             val client: YouTubeClient
             if (clientIndex == -1) {
                 client = MAIN_CLIENT
-                if (isRejected(videoId, client)) {
+                if (isRejected(videoId, client) || debugSkips(client)) {
                     Timber.tag(logTag).d("Skipping ${client.clientName}: its last URL for $videoId got a 403")
                     continue
                 }
@@ -918,7 +933,7 @@ object YTPlayerUtils {
                 Timber.tag(logTag).d("Trying stream from MAIN_CLIENT: ${client.clientName}")
             } else {
                 client = STREAM_FALLBACK_CLIENTS[clientIndex]
-                if (isRejected(videoId, client)) {
+                if (isRejected(videoId, client) || debugSkips(client)) {
                     Timber.tag(logTag).d("Skipping ${client.clientName}: its last URL for $videoId got a 403")
                     continue
                 }
@@ -983,7 +998,7 @@ object YTPlayerUtils {
                 val isPrivatelyOwnedTrack = streamPlayerResponse?.videoDetails?.musicVideoType == "MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK"
 
                 // Apply n-transform FIRST for web clients (main branch order - critical!)
-                if (currentClient.useWebPoTokens) {
+                if (currentClient.useWebPoTokens || currentClient.jsPlayer) {
                     try {
                         Timber.tag(logTag).d("Applying n-transform to stream URL for ${currentClient.clientName}")
                         val transformed = EjsNTransformSolver.transformNParamInUrl(streamUrl)
@@ -1054,7 +1069,7 @@ object YTPlayerUtils {
                     }
 
                     // For web clients: try alternate n-transform and re-validate (Zemer approach)
-                    if (currentClient.useWebPoTokens) {
+                    if (currentClient.useWebPoTokens || currentClient.jsPlayer) {
                         var nTransformWorked = false
 
                         try {

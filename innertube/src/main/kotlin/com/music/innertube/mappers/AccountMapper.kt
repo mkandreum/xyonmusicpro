@@ -16,6 +16,12 @@ import kotlinx.serialization.json.jsonPrimitive
 
 internal object AccountMapper {
     suspend fun visitorData(innerTube: InnerTube): Result<String> = runCatching {
+        // The short, correct visitorData first; the 558-char sw.js_data one only if that endpoint fails.
+        runCatching {
+            val text = innerTube.visitorId().bodyAsText()
+            Json.parseToJsonElement(text).jsonObject["responseContext"]?.jsonObject?.get("visitorData")
+                ?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() }
+        }.getOrNull()?.let { return@runCatching it }
         val response = innerTube.getSwJsData().bodyAsText()
         val root = Json.parseToJsonElement(response.substring(5)).jsonArray
         // YouTube moves the value between nesting levels from time to time; search the whole tree.

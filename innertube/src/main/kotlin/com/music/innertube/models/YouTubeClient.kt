@@ -22,6 +22,11 @@ data class YouTubeClient(
     val useSignatureTimestamp: Boolean = false,
     val isEmbedded: Boolean = false,
     val useWebPoTokens: Boolean = false,
+    /**
+     * URLs from this client are signed against the player JavaScript (signature and `n`), but no PO token
+     * is needed: they are decoded and sped up with the player JS, without running BotGuard.
+     */
+    val jsPlayer: Boolean = false,
 ) {
     fun toContext(locale: YouTubeLocale, visitorData: String?, dataSyncId: String?) = Context(
         client = Context.Client(
@@ -75,15 +80,24 @@ data class YouTubeClient(
             useSignatureTimestamp = true,
         )
 
+        /**
+         * yt-dlp's `tv_samsung`: the one TV identity YouTube still answers (also signed out) without a PO token.
+         * The previous pair, version 7.x with a Tizen 4.0 user agent, is rejected ("reload the page"), which
+         * left signed-in users with no working client for downloads.
+         */
         val TVHTML5 = YouTubeClient(
             clientName = "TVHTML5",
-            clientVersion = "7.20260213.00.00",
+            clientVersion = "5.20260707",
             clientId = "7",
-            userAgent = "Mozilla/5.0(SMART-TV; Linux; Tizen 4.0.0.2) AppleWebkit/605.1.15 (KHTML, like Gecko) SamsungBrowser/9.2 TV Safari/605.1.15",
+            userAgent = "Mozilla/5.0 (SMART-TV; Linux; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1",
+            osName = "Tizen",
+            osVersion = "2.4.0",
+            deviceMake = "Samsung",
+            deviceModel = "UKS9800",
             loginSupported = true,
-            loginRequired = true,
+            loginRequired = false,
             useSignatureTimestamp = true,
-            useWebPoTokens = true,
+            jsPlayer = true,
         )
 
         /**
@@ -239,6 +253,24 @@ data class YouTubeClient(
             friendlyName = "visionOS",
             loginSupported = false,
             useSignatureTimestamp = false
+        )
+
+        /**
+         * A second visionOS identity (current yt-dlp values). The bot check that sometimes turns the first one
+         * away hits each identity on its own, so this is a cheap second chance before the heavier clients.
+         */
+        val VISIONOS_1_02 = YouTubeClient(
+            clientName = "VISIONOS",
+            clientVersion = "1.02",
+            clientId = "101",
+            userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+            osName = "visionOS",
+            osVersion = "26.5.23O471",
+            deviceMake = "Apple",
+            deviceModel = "RealityDevice17,1",
+            friendlyName = "visionOS",
+            loginSupported = false,
+            useSignatureTimestamp = false,
         )
 
         /**

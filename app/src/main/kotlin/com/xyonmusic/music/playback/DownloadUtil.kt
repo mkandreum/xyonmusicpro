@@ -22,6 +22,8 @@ import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DataSource
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.datasource.HttpDataSource
+import com.xyonmusic.music.utils.PlaybackLogLevel
+import com.xyonmusic.music.utils.PlaybackLogManager
 import androidx.media3.datasource.ResolvingDataSource
 import androidx.media3.datasource.cache.CacheDataSource
 import androidx.media3.datasource.cache.CacheWriter
@@ -405,6 +407,10 @@ constructor(
                                 download.failureReason,
                             )
                             if (isForbidden(finalException)) handleForbiddenDownload(download)
+                            // Say why, so a failure is never silent (and so it can be reported from the phone).
+                            if (!download.request.id.endsWith(UPGRADE_SUFFIX)) {
+                                reportDownloadFailure(Util.fromUtf8Bytes(download.request.data), finalException)
+                            }
                         }
 
                         // An upgrade copy never touches the song's own downloaded flag.
@@ -474,6 +480,39 @@ constructor(
             }
             downloadManager.resumeDownloads()
             synchronized(this@DownloadUtil) { rateLimited = false }
+        }
+    }
+
+    private var lastFailureToastAt = 0L
+
+    /** A short, human reason for a failed download. */
+    private fun describeFailure(error: Throwable?): String {
+        var cause = error
+        var depth = 0
+        while (cause != null && depth < 8) {
+            val message = cause.message.orEmpty()
+            when {
+                message.contains("bot", ignoreCase = true) || message.contains("Inicia sesión", ignoreCase = true) ||
+                    message.contains("Sign in", ignoreCase = true) -> return "YouTube pide verificar que no eres un bot"
+                cause is HttpDataSource.InvalidResponseCodeException ->
+                    return "YouTube rechazó la descarga (HTTP ${cause.responseCode})"
+                cause is java.net.UnknownHostException || cause is java.net.SocketTimeoutException ||
+                    cause is java.net.ConnectException -> return "sin conexión con YouTube"
+            }
+            cause = cause.cause
+            depth++
+        }
+        return (error?.message ?: error?.javaClass?.simpleName ?: "error desconocido").take(90)
+    }
+
+    private fun reportDownloadFailure(title: String, error: Throwable?) {
+        val reason = describeFailure(error)
+        PlaybackLogManager.log(PlaybackLogLevel.ERROR, "Descarga fallida: $title", reason)
+        val now = System.currentTimeMillis()
+        if (now - lastFailureToastAt < 20_000L) return
+        lastFailureToastAt = now
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            android.widget.Toast.makeText(appContext, "No se pudo descargar «$title»: $reason", android.widget.Toast.LENGTH_LONG).show()
         }
     }
 

@@ -146,7 +146,7 @@ class InnerTube {
         }
     }
 
-    private fun HttpRequestBuilder.ytClient(client: YouTubeClient, setLogin: Boolean = false) {
+    private fun HttpRequestBuilder.ytClient(client: YouTubeClient, setLogin: Boolean = false, withVisitor: Boolean = true) {
         contentType(ContentType.Application.Json)
         headers {
             append("X-Goog-Api-Format-Version", "1")
@@ -154,7 +154,7 @@ class InnerTube {
             append("X-YouTube-Client-Version", client.clientVersion)
             append("X-Origin", YouTubeClient.ORIGIN_YOUTUBE_MUSIC)
             append("Referer", YouTubeClient.REFERER_YOUTUBE_MUSIC)
-            visitorData?.let { append("X-Goog-Visitor-Id", it) }
+            if (withVisitor) visitorData?.let { append("X-Goog-Visitor-Id", it) }
             if (setLogin && client.loginSupported) {
                 cookie?.let { cookie ->
                     append("cookie", cookie)
@@ -414,6 +414,18 @@ class InnerTube {
     }
 
     suspend fun getSwJsData() = withRetry { httpClient.get("https://music.youtube.com/sw.js_data") }
+
+    /**
+     * Issues a new visitor. Its `responseContext.visitorData` is the normal, short form (about 90 chars) that
+     * PO tokens must be minted for. `sw.js_data` hands out a 558-char variant that yields oversized tokens
+     * YouTube does not accept, so it is only a fallback. Nothing identifying is sent with the request.
+     */
+    suspend fun visitorId() = withRetry {
+        httpClient.post("visitor_id") {
+            ytClient(YouTubeClient.WEB_REMIX, withVisitor = false)
+            setBody(com.music.innertube.models.body.VisitorIdBody(YouTubeClient.WEB_REMIX.toContext(locale, null, null)))
+        }
+    }
 
     suspend fun accountMenu(client: YouTubeClient) = withRetry {
         httpClient.post("account/account_menu") {

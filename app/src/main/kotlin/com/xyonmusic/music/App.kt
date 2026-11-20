@@ -125,7 +125,8 @@ class App : Application(), SingletonImageLoader.Factory {
         // cookie would trigger guest fallback and overwrite the saved visitorData.
         // authSeed() provides this synchronous read.
         YouTube.cookie = authSeed(InnerTubeCookieKey)
-        YouTube.visitorData = authSeed(VisitorDataKey)
+        // The 558-char visitorData from sw.js_data (older versions stored it) makes PO tokens invalid: drop it.
+        YouTube.visitorData = authSeed(VisitorDataKey)?.takeIf { it.length < 300 }
         YouTube.dataSyncId = authSeed(DataSyncIdKey)
 
         // Warm the preference mirror off Main so the first composition avoids its blocking read.
@@ -253,7 +254,7 @@ class App : Application(), SingletonImageLoader.Factory {
                     // A blank value is not "no account", it is a broken one: it still
                     // gets sent as an empty X-Goog-Visitor-Id and YouTube rejects every
                     // request. Treat it as absent so a fresh one is fetched and stored.
-                    YouTube.visitorData = visitorData?.takeIf { it.isNotBlank() && it != "null" }
+                    YouTube.visitorData = visitorData?.takeIf { it.isNotBlank() && it != "null" && it.length < 300 }
                         ?: YouTube.visitorData().getOrNull()?.also { newVisitorData ->
                             dataStore.edit { settings ->
                                 settings[VisitorDataKey] = newVisitorData
