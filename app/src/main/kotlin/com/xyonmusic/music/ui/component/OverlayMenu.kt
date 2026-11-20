@@ -192,7 +192,9 @@ fun OverlayMenu(
                 modifier = Modifier
                     .offset { IntOffset(left.roundToInt(), top.roundToInt()) }
                     .width(MenuWidth)
-                    .heightIn(max = maxHeight - 24.dp)
+                    // A menu is a pop-over, not a page: past ~2/3 of the screen its list scrolls
+                    // (every menu body is a LazyColumn) instead of the panel covering everything.
+                    .heightIn(max = maxHeight * 0.65f)
                     .onSizeChanged { panelSize = it }
                     .graphicsLayer {
                         transformOrigin = origin

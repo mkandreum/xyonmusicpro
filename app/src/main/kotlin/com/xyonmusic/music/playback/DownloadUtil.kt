@@ -190,7 +190,7 @@ constructor(
                 .setCache(playerCache)
                 .setUpstreamDataSourceFactory(
                     DataSource.Factory {
-                        ExpiredUrlGuard(
+                        LocalOrRemoteDataSource(DefaultDataSource.Factory(appContext).createDataSource()) { ExpiredUrlGuard(
                             HlsJoinDataSource(
                                 YTPlayerUtils.httpClient,
                                 RangedUpstreamDataSource(OkHttpDataSource.Factory(YTPlayerUtils.httpClient)),
@@ -199,7 +199,7 @@ constructor(
                             songUrlCache.remove(key.substringBefore('#')); songUrlCache.remove(key)
                             // The retry must also move off the client whose URL was rejected.
                             YTPlayerUtils.forceRefreshForVideo(key)
-                        }
+                        } }
                     },
                 ),
         ) { dataSpec ->
@@ -212,6 +212,10 @@ constructor(
             if (dataSpec.length >= 0 && playerCache.isCached(mediaId, dataSpec.position, dataSpec.length)) {
                 return@Factory dataSpec
             }
+
+            // Already exported (this install or an earlier one): copy that file instead of
+            // fetching the song again, so it costs no data and leaves no "(1)" copy behind.
+            if (!upgrade) exportedFileFor(videoId)?.let { return@Factory dataSpec.withUri(it) }
 
             songUrlCache[mediaId]?.takeIf { it.second > System.currentTimeMillis() }?.let {
                 return@Factory dataSpec.withStream(it.first)
@@ -569,6 +573,7 @@ constructor(
             result.values
                 .filter { it.state == Download.STATE_COMPLETED && it.request.storageKey() == it.request.id }
                 .forEach { registerDuplicate(it.request.id) }
+            runCatching { adoptExportedFiles() }.onFailure { Timber.e(it, "Adopting exported files failed") }
         }
     }
 
@@ -593,6 +598,38 @@ constructor(
         if (inLibrary) return
         joinedByDownload += id
         database.addToLibraryIfMissing(id, System.currentTimeMillis())
+    }
+
+    /** The audio file already exported for this song, if the song is known and the file exists. */
+    private fun exportedFileFor(songId: String): android.net.Uri? {
+        val song = database.getSongByIdBlocking(songId) ?: return null
+        if (song.song.isLocal) return null
+        return DownloadExporter.findExported(appContext, song.artists.joinToString { it.name }, song.song.title)
+    }
+
+    /**
+     * Songs in the library whose file is already in Download/XyonMusic (from before a reinstall,
+     * for instance) but which this install does not know as downloaded: queue them, and the
+     * resolver above fills each from its file, so they show as downloaded without re-downloading.
+     */
+    private suspend fun adoptExportedFiles() {
+        val names = DownloadExporter.exportedBaseNames(appContext)
+        if (names.isEmpty()) return
+        val known = _downloads.value
+        val songs = database.songs(com.xyonmusic.music.constants.SongSortType.CREATE_DATE, false).first()
+        val toAdopt = songs.filter { s ->
+            !s.song.isLocal && known[s.id]?.state != Download.STATE_COMPLETED &&
+                exportBaseName(s.artists.joinToString { it.name }, s.song.title) in names
+        }
+        toAdopt.forEach { s ->
+            DownloadService.sendAddDownload(
+                appContext,
+                ExoDownloadService::class.java,
+                DownloadRequest.Builder(s.id, s.id.toUri()).setCustomCacheKey(s.id).setData(s.song.title.toByteArray()).build(),
+                false,
+            )
+        }
+        if (toAdopt.isNotEmpty()) Timber.d("Adopting %d already exported songs", toAdopt.size)
     }
 
     private suspend fun registerDuplicate(songId: String) {
@@ -672,6 +709,45 @@ constructor(
 
     fun release() {
         scope.cancel()
+    }
+}
+
+/** Reads content:// and file:// from [local] and everything else from the network source. */
+@UnstableApi
+internal class LocalOrRemoteDataSource(
+    private val local: DataSource,
+    private val remoteFactory: () -> DataSource,
+) : DataSource {
+    private var remote: DataSource? = null
+    private var current: DataSource? = null
+    private val listeners = mutableListOf<androidx.media3.datasource.TransferListener>()
+
+    override fun addTransferListener(transferListener: androidx.media3.datasource.TransferListener) {
+        listeners += transferListener
+        local.addTransferListener(transferListener)
+        remote?.addTransferListener(transferListener)
+    }
+
+    override fun open(dataSpec: DataSpec): Long {
+        val scheme = dataSpec.uri.scheme
+        val source = if (scheme == "content" || scheme == "file") local
+            else remote ?: remoteFactory().also { r -> listeners.forEach(r::addTransferListener); remote = r }
+        current = source
+        return source.open(dataSpec)
+    }
+
+    override fun read(buffer: ByteArray, offset: Int, length: Int): Int = requireNotNull(current).read(buffer, offset, length)
+
+    override fun getUri(): android.net.Uri? = current?.uri
+
+    override fun getResponseHeaders(): Map<String, List<String>> = current?.responseHeaders ?: emptyMap()
+
+    override fun close() {
+        try {
+            current?.close()
+        } finally {
+            current = null
+        }
     }
 }
 

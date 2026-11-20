@@ -1563,43 +1563,50 @@ private fun SongDownloadState(song: Song, download: androidx.media3.exoplayer.of
             downloadUtil.downloads.value,
         )
     }
-    androidx.compose.animation.AnimatedContent(
-        targetState = when {
-            state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED || (download == null && song.song.isDownloaded) -> 2
-            state == androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING ||
-                state == androidx.media3.exoplayer.offline.Download.STATE_QUEUED ||
-                state == androidx.media3.exoplayer.offline.Download.STATE_RESTARTING -> 1
-            state == androidx.media3.exoplayer.offline.Download.STATE_FAILED -> 3
-            else -> 0
-        },
-        transitionSpec = {
-            (androidx.compose.animation.fadeIn(androidx.compose.animation.core.tween(180)) +
-                androidx.compose.animation.scaleIn(androidx.compose.animation.core.spring(0.55f, 500f), initialScale = 0.6f)) togetherWith
-                androidx.compose.animation.fadeOut(androidx.compose.animation.core.tween(120))
-        },
-        label = "songDownloadState",
-    ) { s ->
-        Box(
-            contentAlignment = Alignment.Center,
-            modifier = Modifier
-                .size(32.dp)
-                .then(
-                    when (s) {
-                        0, 3 -> Modifier.clickable(onClickLabel = "Descargar") { startDownload() }
-                        // Tapping the ring cancels only this song's download.
-                        1 -> Modifier.clickable(onClickLabel = "Cancelar descarga") {
-                            com.xyonmusic.music.playback.cancelDownload(context, song.id, downloadUtil.downloads.value)
-                        }
-                        else -> Modifier
-                    },
-                ),
-        ) {
-            when (s) {
-                2 -> com.xyonmusic.music.ui.component.SymbolIcon(sf("arrow.down.circle.fill"), contentDescription = "Descargada", size = 20.dp, tint = IosTheme.tint, chrome = 0f)
-                1 -> com.xyonmusic.music.ui.component.DownloadRingIcon(download, size = 20.dp)
-                3 -> com.xyonmusic.music.ui.component.SymbolIcon(sf("exclamationmark.circle"), contentDescription = "Error al descargar", size = 20.dp, tint = androidx.compose.ui.graphics.Color(0xFFFF6B60), chrome = 0f)
-                else -> com.xyonmusic.music.ui.component.SymbolIcon(sf("arrow.down.circle"), contentDescription = "Descargar", size = 20.dp, tint = IosTheme.colors.secondaryLabel.copy(alpha = 0.55f), chrome = 0f)
+    val s = when {
+        state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED || (download == null && song.song.isDownloaded) -> 2
+        state == androidx.media3.exoplayer.offline.Download.STATE_DOWNLOADING ||
+            state == androidx.media3.exoplayer.offline.Download.STATE_QUEUED ||
+            state == androidx.media3.exoplayer.offline.Download.STATE_RESTARTING -> 1
+        state == androidx.media3.exoplayer.offline.Download.STATE_FAILED -> 3
+        else -> 0
+    }
+    // A small pop when the state really changes, read in the draw phase. Not AnimatedContent:
+    // that built a transition and kept two copies of the icon in every row of the list, the
+    // cost of which was paid on every row that scrolled into view, for a state that rarely moves.
+    val pop = remember { androidx.compose.animation.core.Animatable(1f) }
+    val previous = remember { intArrayOf(s) }
+    LaunchedEffect(s) {
+        if (previous[0] != s) {
+            previous[0] = s
+            pop.snapTo(0.6f)
+            pop.animateTo(1f, androidx.compose.animation.core.spring(0.55f, 500f))
+        }
+    }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(32.dp)
+            .graphicsLayer {
+                scaleX = pop.value
+                scaleY = pop.value
             }
+            .then(
+                when (s) {
+                    0, 3 -> Modifier.clickable(onClickLabel = "Descargar") { startDownload() }
+                    // Tapping the ring cancels only this song's download.
+                    1 -> Modifier.clickable(onClickLabel = "Cancelar descarga") {
+                        com.xyonmusic.music.playback.cancelDownload(context, song.id, downloadUtil.downloads.value)
+                    }
+                    else -> Modifier
+                },
+            ),
+    ) {
+        when (s) {
+            2 -> com.xyonmusic.music.ui.component.SymbolIcon(sf("arrow.down.circle.fill"), contentDescription = "Descargada", size = 20.dp, tint = IosTheme.tint, chrome = 0f)
+            1 -> com.xyonmusic.music.ui.component.DownloadRingIcon(download, size = 20.dp)
+            3 -> com.xyonmusic.music.ui.component.SymbolIcon(sf("exclamationmark.circle"), contentDescription = "Error al descargar", size = 20.dp, tint = androidx.compose.ui.graphics.Color(0xFFFF6B60), chrome = 0f)
+            else -> com.xyonmusic.music.ui.component.SymbolIcon(sf("arrow.down.circle"), contentDescription = "Descargar", size = 20.dp, tint = IosTheme.colors.secondaryLabel.copy(alpha = 0.55f), chrome = 0f)
         }
     }
 }

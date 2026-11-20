@@ -71,15 +71,17 @@ fun AppStartupEffects(activity: android.app.Activity, playerConnection: PlayerCo
             val modes = window.windowManager.defaultDisplay.supportedModes
             val currentMode = window.windowManager.defaultDisplay.mode
             if (enableHighRefreshRate) {
-                // Zero means no preference. Choose the fastest mode at the current
-                // resolution so refresh rate changes do not reflow the UI.
-                val fastest = modes
-                    .filter {
-                        it.physicalWidth == currentMode.physicalWidth &&
-                            it.physicalHeight == currentMode.physicalHeight
-                    }
-                    .maxByOrNull { it.refreshRate }
-                layoutParams.preferredDisplayModeId = fastest?.modeId ?: 0
+                // Same resolution only, so changing the rate never reflows the UI. Aim for 120 Hz,
+                // not simply the fastest mode: on a 144 Hz panel every frame would have to be
+                // ready in 6.9 ms instead of 8.3 ms, and the frames Compose misses at 144 Hz are
+                // the stutter you see while scrolling. Below 120 Hz, take the fastest there is.
+                val sameSize = modes.filter {
+                    it.physicalWidth == currentMode.physicalWidth &&
+                        it.physicalHeight == currentMode.physicalHeight
+                }
+                val target = sameSize.filter { it.refreshRate <= TargetRefreshRate + 1f }.maxByOrNull { it.refreshRate }
+                    ?: sameSize.minByOrNull { it.refreshRate }
+                layoutParams.preferredDisplayModeId = target?.modeId ?: 0
             } else {
                 val mode60 = modes.firstOrNull { kotlin.math.abs(it.refreshRate - 60f) < 1f }
                     ?: modes.minByOrNull { kotlin.math.abs(it.refreshRate - 60f) }
@@ -94,6 +96,7 @@ fun AppStartupEffects(activity: android.app.Activity, playerConnection: PlayerCo
             params.preferredRefreshRate = if (enableHighRefreshRate) {
                 // Zero means no preference, so request the fastest supported rate.
                 window.windowManager.defaultDisplay.supportedRefreshRates
+                    .filter { it <= TargetRefreshRate + 1f }
                     .maxOrNull()
                     ?: 0f
             } else {
@@ -116,3 +119,6 @@ fun AppStartupEffects(activity: android.app.Activity, playerConnection: PlayerCo
         }
     }
 }
+
+/** The refresh rate the app asks for: smooth, and a frame budget Compose reliably meets. */
+private const val TargetRefreshRate = 120f

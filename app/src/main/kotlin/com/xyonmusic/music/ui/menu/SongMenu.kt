@@ -371,48 +371,6 @@ fun SongMenu(
             NewActionGrid(
                 actions = listOfNotNull(
                     NewAction(
-                        icon = { Icon(painterResource(R.drawable.sparks), contentDescription = null, modifier = Modifier.size(28.dp)) },
-                        text = stringResource(R.string.song_insight_title),
-                        onClick = {
-                            onDismiss()
-                            navController.navigate("song_insight/${android.net.Uri.encode(song.id)}")
-                        },
-                    ),
-                    NewAction(
-                        icon = {
-                            SymbolIcon(symbol = sf("pencil"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
-                        },
-                        text = stringResource(R.string.edit),
-                        onClick = { showEditDialog = true }
-                    ),
-                    NewAction(
-                        icon = {
-                            SymbolIcon(symbol = sf("photo"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
-                        },
-                        text = stringResource(R.string.search_cover),
-                        onClick = { showCoverSearch = true }
-                    ),
-                    if (isLocal || song.song.isDownloaded) NewAction(
-                        icon = {
-                            SymbolIcon(symbol = sf("waveform"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
-                        },
-                        text = stringResource(R.string.analyze_song),
-                        onClick = {
-                            com.xyonmusic.music.playback.dj.LibraryAnalysis.analyze(
-                                context,
-                                listOf(com.xyonmusic.music.playback.dj.LibraryAnalysis.Target(song.id, song.song.duration, song.song.title)),
-                            )
-                            onDismiss()
-                        }
-                    ) else null,
-                    if ((isLocal || song.song.isDownloaded) && song.song.duration in 1..com.xyonmusic.music.playback.smart.StemSeparator.MAX_SECONDS) NewAction(
-                        icon = {
-                            SymbolIcon(symbol = sf("waveform.path"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
-                        },
-                        text = stringResource(R.string.split_stems),
-                        onClick = { showSplitNotice = true }
-                    ) else null,
-                    NewAction(
                         icon = {
                             SymbolIcon(symbol = sf("text.badge.plus"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
                         },
@@ -449,6 +407,13 @@ fun SongMenu(
                             navController.navigate("ai_dj_set?seedSongId=${song.id}")
                         }
                     ),
+                    if ((isLocal || song.song.isDownloaded) && song.song.duration in 1..com.xyonmusic.music.playback.smart.StemSeparator.MAX_SECONDS) NewAction(
+                        icon = {
+                            SymbolIcon(symbol = sf("waveform.path"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
+                        },
+                        text = stringResource(R.string.split_stems),
+                        onClick = { showSplitNotice = true }
+                    ) else null,
                     if (isLocal) null else NewAction(
                         icon = {
                             SymbolIcon(symbol = sf("square.and.arrow.up"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
@@ -466,7 +431,42 @@ fun SongMenu(
                             context.startActivity(Intent.createChooser(intent, null))
                         }
                     )
-                ),
+                ,
+                    NewAction(
+                        icon = {
+                            SymbolIcon(symbol = sf("photo"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
+                        },
+                        text = stringResource(R.string.search_cover),
+                        onClick = { showCoverSearch = true }
+                    ),
+                    NewAction(
+                        icon = {
+                            SymbolIcon(symbol = sf("pencil"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
+                        },
+                        text = stringResource(R.string.edit),
+                        onClick = { showEditDialog = true }
+                    ),
+                    NewAction(
+                        icon = { Icon(painterResource(R.drawable.sparks), contentDescription = null, modifier = Modifier.size(28.dp)) },
+                        text = stringResource(R.string.song_insight_title),
+                        onClick = {
+                            onDismiss()
+                            navController.navigate("song_insight/${android.net.Uri.encode(song.id)}")
+                        },
+                    ),
+                    if (isLocal || song.song.isDownloaded) NewAction(
+                        icon = {
+                            SymbolIcon(symbol = sf("waveform"), contentDescription = null, size = 28.dp, tint = AppTheme.colorScheme.onSurfaceVariant)
+                        },
+                        text = stringResource(R.string.analyze_song),
+                        onClick = {
+                            com.xyonmusic.music.playback.dj.LibraryAnalysis.analyze(
+                                context,
+                                listOf(com.xyonmusic.music.playback.dj.LibraryAnalysis.Target(song.id, song.song.duration, song.song.title)),
+                            )
+                            onDismiss()
+                        }
+                    ) else null),
                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 16.dp)
             )
         }
@@ -525,7 +525,7 @@ fun SongMenu(
                         IosMenuItemData(
                             title = { 
                                 Text(
-                                    text = if (isPinned) "Unpin from Speed dial" else "Pin to Speed dial" 
+                                    text = stringResource(if (isPinned) R.string.unpin_from_speed_dial else R.string.pin_to_speed_dial) 
                                 ) 
                             },
                             icon = {
@@ -562,7 +562,7 @@ fun SongMenu(
                                     )
                                 )
                             },
-                            description = { Text(text = stringResource(R.string.add_to_library_desc)) },
+                            description = if (song.song.inLibrary == null) ({ Text(text = stringResource(R.string.add_to_library_desc)) }) else null,
                             icon = {
                                 SymbolIcon(symbol = 
                                         if (song.song.inLibrary == null) sf("text.badge.plus")

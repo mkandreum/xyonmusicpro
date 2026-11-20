@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -73,9 +74,13 @@ fun NewActionGrid(
     // The panel drops the hairline, so the gap itself has to separate the icons.
     val gap = if (inPanel) 12.dp else 0.dp
 
+    if (inPanel) {
+        PanelActions(actions, modifier)
+        return
+    }
+
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        // In the floating panel the icons sit bare, so three fit in a row.
-        val columnCount = menuActionColumnCount(maxWidth, if (inPanel) 68.dp else MenuActionMinCellWidth, gap, columns)
+        val columnCount = menuActionColumnCount(maxWidth, MenuActionMinCellWidth, gap, columns)
         Column(verticalArrangement = Arrangement.spacedBy(if (inPanel) 12.dp else 8.dp)) {
             actions.chunked(columnCount).forEach { row ->
                 Row(
@@ -99,6 +104,66 @@ fun NewActionGrid(
     }
 }
 
+/** How many quick actions the floating panel shows across its top, as an iOS context menu does. */
+private const val PanelQuickActions = 4
+
+/**
+ * Quick actions inside the floating menu panel: at most [PanelQuickActions] in ONE row of small
+ * icons with a one-line caption; anything beyond that becomes an ordinary one-line row under it.
+ * Three rows of big buttons with clipped two-line captions made the menu taller than the screen.
+ */
+@Composable
+private fun PanelActions(actions: List<NewAction>, modifier: Modifier) {
+    val quick = actions.take(PanelQuickActions)
+    val rest = actions.drop(PanelQuickActions)
+    Column(modifier.fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+            quick.forEach { action -> ActionSegment(action, Modifier.weight(1f), compact = true) }
+            repeat(PanelQuickActions - quick.size) { Spacer(Modifier.weight(1f)) }
+        }
+        rest.forEach { action -> PanelActionRow(action) }
+    }
+}
+
+/** An overflow quick action drawn as a one-line menu row (icon, label). */
+@Composable
+private fun PanelActionRow(action: NewAction) {
+    val contentColor = if (action.contentColor.isSpecified) action.contentColor
+        else com.xyonmusic.music.ui.ios.foundation.IosMenuMaterial.colors.label
+    var performAction by remember { mutableStateOf(false) }
+    if (performAction) {
+        action.onClick()
+        LaunchedEffect(Unit) { performAction = false }
+    }
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = action.enabled, interactionSource = null, indication = null) { performAction = true }
+            .alpha(if (action.enabled) 1f else 0.4f)
+            .defaultMinSize(minHeight = 44.dp)
+            .padding(start = 10.dp, end = 8.dp, top = 8.dp, bottom = 8.dp)
+            .semantics { role = Role.Button },
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CompositionLocalProvider(
+            LocalIosContentColor provides contentColor,
+            com.xyonmusic.music.ui.ios.compat.LocalContentColor provides contentColor,
+            LocalSymbolChrome provides MenuItemChrome,
+            LocalSymbolIconSize provides 22.dp,
+        ) {
+            Box(Modifier.width(28.dp), contentAlignment = Alignment.CenterStart) { action.icon() }
+        }
+        Spacer(Modifier.width(8.dp))
+        IosText(
+            text = action.text,
+            style = IosTheme.typography.body.copy(fontSize = 16.sp, letterSpacing = (-0.43).sp),
+            color = contentColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
 /** Narrowest action cell that still fits a two-line caption such as "Add to playlist". */
 internal val MenuActionMinCellWidth = 120.dp
 
@@ -116,7 +181,7 @@ internal fun menuActionColumnCount(width: Dp, minCell: Dp, gap: Dp, requestedCol
 }
 
 @Composable
-private fun ActionSegment(action: NewAction, modifier: Modifier) {
+private fun ActionSegment(action: NewAction, modifier: Modifier, compact: Boolean = false) {
     val colors = IosTheme.colors
     val contentColor = when {
         action.contentColor.isSpecified -> action.contentColor
@@ -136,25 +201,26 @@ private fun ActionSegment(action: NewAction, modifier: Modifier) {
         modifier = modifier
             .clickable(enabled = action.enabled, interactionSource = null, indication = null) { performAction = true }
             .alpha(if (action.enabled) 1f else 0.4f)
-            .padding(vertical = 10.dp, horizontal = 8.dp)
+            .padding(vertical = if (compact) 8.dp else 10.dp, horizontal = if (compact) 2.dp else 8.dp)
             .semantics { role = Role.Button },
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(5.dp),
+        verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 5.dp),
     ) {
         CompositionLocalProvider(
             LocalIosContentColor provides contentColor,
             com.xyonmusic.music.ui.ios.compat.LocalContentColor provides contentColor,
         ) {
-            CompositionLocalProvider(LocalSymbolChrome provides MenuItemChrome, LocalSymbolIconSize provides 24.dp) {
-                Box(Modifier.size(28.dp), contentAlignment = Alignment.Center) { action.icon() }
+            CompositionLocalProvider(LocalSymbolChrome provides MenuItemChrome, LocalSymbolIconSize provides if (compact) 22.dp else 24.dp) {
+                Box(Modifier.size(if (compact) 24.dp else 28.dp), contentAlignment = Alignment.Center) { action.icon() }
             }
         }
         IosText(
             text = action.text,
-            style = IosTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
+            style = if (compact) IosTheme.typography.caption.copy(fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                else IosTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
             color = contentColor,
             textAlign = TextAlign.Center,
-            maxLines = 2,
+            maxLines = if (compact) 1 else 2,
             overflow = TextOverflow.Ellipsis,
         )
     }

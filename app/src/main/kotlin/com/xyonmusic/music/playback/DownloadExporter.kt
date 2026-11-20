@@ -39,10 +39,81 @@ object DownloadExporter {
         val video: YTPlayerUtils.VideoStream?,
     )
 
+    /**
+     * The audio file already exported for [artist] - [title], whatever its extension, or null.
+     * A file written by an earlier install (before a signing-key change, say) belongs to "another
+     * app" for MediaStore: it only shows up through the audio collection, with READ_MEDIA_AUDIO.
+     */
+    fun findExported(context: Context, artist: String, title: String): Uri? {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+        val base = exportBaseName(artist, title)
+        val resolver = context.contentResolver
+        val selection = "${MediaStore.MediaColumns.RELATIVE_PATH}=? AND ${MediaStore.MediaColumns.DISPLAY_NAME} LIKE ? ESCAPE '\\'"
+        val like = base.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + ".%"
+        val collections = buildList {
+            if (canReadSharedAudio(context)) add(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY))
+            add(MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY))
+        }
+        for (collection in collections) {
+            val found = runCatching {
+                resolver.query(collection, arrayOf(MediaStore.MediaColumns._ID, MediaStore.MediaColumns.DISPLAY_NAME), selection, arrayOf("$FOLDER/", like), null)
+                    ?.use { c ->
+                        var hit: Uri? = null
+                        while (hit == null && c.moveToNext()) {
+                            // LIKE "base.%" also matches "base.lrc"; only audio counts.
+                            val name = c.getString(1)
+                            if (name.substringAfterLast('.').lowercase() in AudioExtensions) {
+                                hit = android.content.ContentUris.withAppendedId(collection, c.getLong(0))
+                            }
+                        }
+                        hit
+                    }
+            }.getOrNull()
+            if (found != null) return found
+        }
+        return null
+    }
+
+    /** Names (without extension) of every audio file in the export folder. */
+    fun exportedBaseNames(context: Context): Set<String> {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return emptySet()
+        val resolver = context.contentResolver
+        val out = HashSet<String>()
+        val collections = buildList {
+            if (canReadSharedAudio(context)) add(MediaStore.Audio.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY))
+            add(MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY))
+        }
+        for (collection in collections) {
+            runCatching {
+                resolver.query(collection, arrayOf(MediaStore.MediaColumns.DISPLAY_NAME), "${MediaStore.MediaColumns.RELATIVE_PATH}=?", arrayOf("$FOLDER/"), null)
+                    ?.use { c ->
+                        while (c.moveToNext()) {
+                            val name = c.getString(0) ?: continue
+                            if (name.substringAfterLast('.').lowercase() in AudioExtensions) out += name.substringBeforeLast('.')
+                        }
+                    }
+            }
+        }
+        return out
+    }
+
+    private fun canReadSharedAudio(context: Context): Boolean {
+        val permission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) android.Manifest.permission.READ_MEDIA_AUDIO
+            else android.Manifest.permission.READ_EXTERNAL_STORAGE
+        return androidx.core.content.ContextCompat.checkSelfPermission(context, permission) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+
+    private val AudioExtensions = setOf("m4a", "webm", "mp3", "flac", "ogg", "opus", "mp4")
+
     fun export(context: Context, cache: Cache, pkg: Package): Uri? {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
         val mime = pkg.audioMimeType?.substringBefore(';')?.trim().takeUnless { it.isNullOrEmpty() } ?: "audio/mp4"
         val base = exportBaseName(pkg.artist, pkg.title)
+        // Already there (possibly written by an earlier install, which this one may not delete):
+        // writing again would only produce "Song (1).m4a". The same goes for its lyrics and cover.
+        findExported(context, pkg.artist, pkg.title)?.let { existing ->
+            if (!pkg.songId.endsWith(UPGRADE_SUFFIX)) return existing
+        }
         val audio = write(context, "$base.${extensionFor(mime)}", mime) {
             val source = CacheDataSource(cache, PlaceholderDataSource.INSTANCE)
             try {

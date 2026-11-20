@@ -125,16 +125,16 @@ private fun FlatMenuGroup(items: List<IosMenuItemData>, modifier: Modifier) {
         Box(
             Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 4.dp)
+                .padding(horizontal = 8.dp, vertical = 3.dp)
                 .height(1.dp)
                 .background(separator),
         )
-        items.forEach { item -> IosMenuItemRow(item) }
+        items.forEach { item -> IosMenuItemRow(item, compact = true) }
     }
 }
 
 @Composable
-private fun IosMenuItemRow(item: IosMenuItemData) {
+private fun IosMenuItemRow(item: IosMenuItemData, compact: Boolean = false) {
     val colors = IosTheme.colors
     // A destructive row colours its label as well as its icon — that, not a red fill,
     // is how iOS marks "Delete" apart from the rows above it.
@@ -150,7 +150,8 @@ private fun IosMenuItemRow(item: IosMenuItemData) {
             .then(glow.modifier)
             .then(glow.gestureModifier)
             .defaultMinSize(minHeight = 44.dp)
-            .padding(start = 10.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+            // In the floating panel a row is one line, as an iOS menu item is: 44dp tall.
+            .padding(start = 10.dp, end = 8.dp, top = if (compact) 8.dp else 10.dp, bottom = if (compact) 8.dp else 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         item.icon?.let { icon ->
@@ -174,11 +175,13 @@ private fun IosMenuItemRow(item: IosMenuItemData) {
             ProvideIosContent(
                 contentColor,
                 IosTheme.typography.body.copy(
-                    fontSize = 17.sp,
+                    fontSize = if (compact) 16.sp else 17.sp,
                     letterSpacing = (-0.43).sp,
                 )
             ) { item.title() }
-            item.description?.let { desc ->
+            // iOS menu items carry no second line; the explanation belongs in sheets, where
+            // there is room for it. In the panel it doubled every row's height.
+            if (!compact) item.description?.let { desc ->
                 ProvideIosContent(colors.secondaryLabel, IosTheme.typography.footnote) { desc() }
             }
         }
