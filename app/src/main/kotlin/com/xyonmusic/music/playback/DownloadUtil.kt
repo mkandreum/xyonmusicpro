@@ -109,6 +109,12 @@ constructor(
     private val appContext: Context = context
     private val pendingUpgrades = java.util.concurrent.ConcurrentHashMap<String, FormatEntity>()
 
+    /**
+     * Songs that entered the Songs list because their download was queued (they were not in the
+     * library before). A cancelled download takes them back out; a finished one keeps them.
+     */
+    private val joinedByDownload = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val _downloads = MutableStateFlow<Map<String, Download>>(emptyMap())
@@ -425,7 +431,13 @@ constructor(
 
                         val shared = download.request.storageKey() != download.request.id
                         when (download.state) {
+                            // Tapping Download puts the song in Songs right away (with its progress
+                            // ring), instead of only once the whole queue reaches it.
+                            Download.STATE_QUEUED, Download.STATE_DOWNLOADING -> scope.launch {
+                                joinLibraryOnQueue(download)
+                            }
                             Download.STATE_COMPLETED -> scope.launch {
+                                joinedByDownload.remove(download.request.id)
                                 ensureSongRow(download)
                                 database.updateDownloadedInfo(download.request.id, true, LocalDateTime.now())
                                 // A downloaded song also joins the Songs list (newest first).
@@ -448,6 +460,11 @@ constructor(
                     }
 
                     override fun onDownloadRemoved(downloadManager: DownloadManager, download: Download) {
+                        // Cancelled before it finished: a song that only joined Songs for this
+                        // download leaves again; one that was already in the library stays.
+                        if (joinedByDownload.remove(download.request.id)) {
+                            scope.launch { database.removeFromLibrary(download.request.id) }
+                        }
                         songUrlCache.remove(download.request.id)
                         DownloadDuplicates.unregister(download.request.id)
                         autoDownloadRequests.remove(download.request.id)
@@ -560,6 +577,16 @@ constructor(
         val id = download.request.id
         if (database.getSongByIdBlocking(id) != null) return
         database.insert(SongEntity(id = id, title = Util.fromUtf8Bytes(download.request.data).ifBlank { "Unknown" }))
+    }
+
+    private fun joinLibraryOnQueue(download: Download) {
+        val id = download.request.id
+        if (id.endsWith(UPGRADE_SUFFIX) || id in joinedByDownload) return
+        ensureSongRow(download)
+        val inLibrary = database.getSongByIdBlocking(id)?.song?.inLibrary != null
+        if (inLibrary) return
+        joinedByDownload += id
+        database.addToLibraryIfMissing(id, System.currentTimeMillis())
     }
 
     private suspend fun registerDuplicate(songId: String) {

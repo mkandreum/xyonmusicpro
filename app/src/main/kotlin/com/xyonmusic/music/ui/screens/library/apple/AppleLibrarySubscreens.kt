@@ -1634,6 +1634,22 @@ internal fun songMenu(
                 },
             ),
         ),
+        // Last, in red as on iOS: takes the song out of Songs, and its download with it so it
+        // does not keep using space where it can no longer be seen.
+        IosMenuSection(
+            listOfNotNull(
+                if (song.song.inLibrary == null) null else IosMenuItem(
+                    stringResource(R.string.remove_from_songs),
+                    icon = glyph(sf("SFTrash")),
+                    role = com.xyonmusic.music.ui.ios.component.IosButtonRole.Destructive,
+                ) {
+                    database.query { removeFromLibrary(song.id) }
+                    if (!isLocal && (isOnDevice || songDownload != null)) {
+                        com.xyonmusic.music.playback.removeDownloads(context, listOf(song.id))
+                    }
+                },
+            ),
+        ),
     ).filter { it.items.isNotEmpty() }
     return SongMenuEntries(quick, sections, addToPlaylist)
 }
