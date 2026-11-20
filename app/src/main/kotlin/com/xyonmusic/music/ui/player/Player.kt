@@ -182,7 +182,6 @@ import coil3.request.crossfade
 import coil3.toBitmap
 import com.xyonmusic.music.LocalDatabase
 import com.xyonmusic.music.LocalDownloadUtil
-import com.xyonmusic.music.LocalListenTogetherManager
 import com.xyonmusic.music.LocalPlayerConnection
 import com.xyonmusic.music.LocalTabView
 import com.xyonmusic.music.R
@@ -224,7 +223,6 @@ import com.xyonmusic.music.db.entities.LyricsEntity
 import com.xyonmusic.music.extensions.SwipeGesture
 import com.xyonmusic.music.extensions.togglePlayPause
 import com.xyonmusic.music.extensions.toggleRepeatMode
-import com.xyonmusic.music.listentogether.RoomRole
 import com.xyonmusic.music.models.MediaMetadata
 import com.xyonmusic.music.playback.ExoDownloadService
 import com.xyonmusic.music.core.AudioDeviceMenu
@@ -265,7 +263,6 @@ import com.xyonmusic.music.ui.component.backdrop.backdrops.layerBackdrop
 import com.xyonmusic.music.ui.component.backdrop.backdrops.rememberLayerBackdrop
 import com.xyonmusic.music.ui.component.rememberBottomSheetState
 import com.xyonmusic.music.ui.component.rememberHeroTint
-import com.xyonmusic.music.ui.menu.OldPlayerMenu
 import com.xyonmusic.music.ui.menu.PlayerMenu
 import com.xyonmusic.music.ui.component.VolumeSlider
 import com.xyonmusic.music.ui.screens.settings.DarkMode
@@ -442,14 +439,8 @@ fun BottomSheetPlayer(
     val isLosslessStream = currentFormat?.mimeType?.contains("flac", ignoreCase = true) == true || 
                           playerFormat?.sampleMimeType?.contains("flac", ignoreCase = true) == true
     val sliderStyle by rememberEnumPreference(SliderStyleKey, SliderStyle.SLIM)
-
-    val listenTogetherManager = LocalListenTogetherManager.current
-    val listenTogetherRoleState = listenTogetherManager?.role?.collectAsStateWithLifecycle(initialValue =RoomRole.NONE)
-    // "Guest" here means "may not drive playback", not merely "is not host":
-    // with the room set to everyone-control a member drives playback too, so
-    // keying the UI off the role alone left their controls greyed out.
-    val canControlTogether = listenTogetherManager?.canControl?.collectAsStateWithLifecycle(initialValue = true)
-    val isListenTogetherGuest = canControlTogether?.value == false
+    // Listen Together is gone: playback is never locked to a room host.
+    val isListenTogetherGuest = false
     
     // Cast state can be absent while the service is starting or stopping.
     val castHandler = remember(playerConnection) {

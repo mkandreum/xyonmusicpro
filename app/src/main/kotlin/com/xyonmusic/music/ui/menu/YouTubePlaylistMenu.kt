@@ -60,7 +60,6 @@ import com.music.innertube.models.SongItem
 import com.music.innertube.utils.completed
 import com.xyonmusic.music.LocalDatabase
 import com.xyonmusic.music.LocalDownloadUtil
-import com.xyonmusic.music.LocalListenTogetherManager
 import com.xyonmusic.music.LocalPlayerConnection
 import com.xyonmusic.music.R
 import com.xyonmusic.music.constants.ListThumbnailSize
@@ -109,8 +108,7 @@ fun YouTubePlaylistMenu(
     val database = LocalDatabase.current.get()
     val downloadUtil = LocalDownloadUtil.current.get()
     val playerConnection = LocalPlayerConnection.current ?: return
-    val listenTogetherManager = LocalListenTogetherManager.current
-    val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
+    val isGuest = false
     val dbPlaylist by database.playlistByBrowseId(playlist.id).collectAsState(initial = null)
     val currentPlaylist = dbPlaylist?.playlist
     val isPlaylistLiked = currentPlaylist?.bookmarkedAt != null

@@ -38,7 +38,6 @@ fun rememberSideBarSections(
     database: dagger.Lazy<MusicDatabase>,
     showHistoryButton: Boolean,
     showStatsButton: Boolean,
-    listenTogetherInTopBar: Boolean,
     navController: androidx.navigation.NavHostController,
     onLibraryFilterChange: (com.xyonmusic.music.constants.LibraryFilter) -> Unit,
 ): List<SideBarSection> {
@@ -53,7 +52,6 @@ fun rememberSideBarSections(
         val sidebarSections = remember(
             showHistoryButton,
             showStatsButton,
-            listenTogetherInTopBar,
             sidebarPlaylists,
             onLibraryFilterChange,
         ) {
@@ -108,18 +106,6 @@ fun rememberSideBarSections(
                                 label = context.getString(R.string.stats),
                                 iconRes = R.drawable.stats,
                                 onClick = { navController.navigate("stats") },
-                            )
-                        )
-                    }
-                    // Listen Together was removed; its route no longer exists.
-                    if (false && listenTogetherInTopBar) {
-                        add(
-                            SideBarLink(
-                                label = context.getString(R.string.together),
-                                iconRes = R.drawable.group_outlined,
-                                onClick = {
-                                    navController.navigate("listen_together_from_topbar")
-                                },
                             )
                         )
                     }

@@ -272,23 +272,6 @@ val DiscordAdvancedModeKey = booleanPreferencesKey("discordAdvancedMode")
 // Google Cast
 val EnableGoogleCastKey = booleanPreferencesKey("enableGoogleCast")
 
-// Listen Together
-val ListenTogetherServerUrlKey = stringPreferencesKey("listenTogetherServerUrl")
-val ListenTogetherUsernameKey = stringPreferencesKey("listenTogetherUsername")
-val EnableListenTogetherKey = booleanPreferencesKey("enableListenTogether")
-val ListenTogetherAutoApprovalKey = booleanPreferencesKey("listenTogetherAutoApproval")
-/** Host-side: land guests' track suggestions in the queue without asking. */
-val ListenTogetherAutoAddSuggestionsKey = booleanPreferencesKey("listenTogetherAutoAddSuggestions")
-val ListenTogetherSyncVolumeKey = booleanPreferencesKey("listenTogetherSyncVolume")
-val ListenTogetherSmartResyncKey = booleanPreferencesKey("listenTogetherSmartResync")
-val ListenTogetherBlockedUsersKey = stringPreferencesKey("listenTogetherBlockedUsers")
-val ListenTogetherInTopBarKey = booleanPreferencesKey("listenTogetherInTopBar")
-// Session persistence for reconnection
-val ListenTogetherSessionTokenKey = stringPreferencesKey("listenTogetherSessionToken")
-val ListenTogetherRoomCodeKey = stringPreferencesKey("listenTogetherRoomCode")
-val ListenTogetherUserIdKey = stringPreferencesKey("listenTogetherUserId")
-val ListenTogetherIsHostKey = booleanPreferencesKey("listenTogetherIsHost")
-val ListenTogetherSessionTimestampKey = longPreferencesKey("listenTogetherSessionTimestamp")
 
 val LastFMSessionKey = stringPreferencesKey("lastfmSession")
 val LastFMUsernameKey = stringPreferencesKey("lastfmUsername")

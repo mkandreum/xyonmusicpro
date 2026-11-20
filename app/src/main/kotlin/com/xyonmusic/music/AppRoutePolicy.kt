@@ -28,12 +28,10 @@ internal object AppRoutePolicy {
         "equalizer",
         "wrapped",
         "update",
-        "listen_together/chat",
     )
     private val routesWithoutPlayer = setOf(
         "wrapped",
         "update",
-        "listen_together/chat",
         "login",
         "equalizer",
         "ambient_mode",
@@ -41,7 +39,6 @@ internal object AppRoutePolicy {
     private val routesWithoutBottomSheetPlayer = setOf(
         "wrapped",
         "update",
-        "listen_together/chat",
         "ambient_mode",
     )
     private val routesWithoutDownloadState = setOf(
@@ -50,8 +47,6 @@ internal object AppRoutePolicy {
         "equalizer",
         "wrapped",
         "update",
-        Screens.ListenTogether.route,
-        "listen_together/chat",
         "ambient_mode",
     )
 
@@ -62,8 +57,6 @@ internal object AppRoutePolicy {
         "recognition",
         "recognition_history",
         "switch_channel",
-        "listen_together_from_topbar",
-        Screens.ListenTogether.route,
     )
 
     fun isTabRoot(route: String?) = route != null && route in tabRootRoutes

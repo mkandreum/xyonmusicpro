@@ -67,7 +67,6 @@ import coil3.compose.AsyncImage
 import com.music.innertube.YouTube
 import com.xyonmusic.music.LocalDatabase
 import com.xyonmusic.music.LocalDownloadUtil
-import com.xyonmusic.music.LocalListenTogetherManager
 import com.xyonmusic.music.LocalPlayerConnection
 import com.xyonmusic.music.R
 import com.xyonmusic.music.constants.ListItemHeight
@@ -105,8 +104,7 @@ fun AlbumMenu(
     val database = LocalDatabase.current.get()
     val downloadUtil = LocalDownloadUtil.current.get()
     val playerConnection = LocalPlayerConnection.current ?: return
-    val listenTogetherManager = LocalListenTogetherManager.current
-    val isGuest = listenTogetherManager?.isInRoom == true && !listenTogetherManager.isHost
+    val isGuest = false
     val scope = rememberCoroutineScope()
     val libraryAlbum by database.album(originalAlbum.id).collectAsState(initial = originalAlbum)
     val album = libraryAlbum ?: originalAlbum

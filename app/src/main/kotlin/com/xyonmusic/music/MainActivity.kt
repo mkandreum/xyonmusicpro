@@ -70,9 +70,6 @@ class MainActivity : ComponentActivity() {
     lateinit var historyDataSource: dagger.Lazy<HistoryLocalDataSource>
 
     @Inject
-    lateinit var listenTogetherManager: dagger.Lazy<com.xyonmusic.music.listentogether.ListenTogetherManager>
-
-    @Inject
     lateinit var partyManager: dagger.Lazy<com.xyonmusic.music.jam.JamManager>
 
     @Inject
@@ -231,6 +228,6 @@ class MainActivity : ComponentActivity() {
     }
 
     internal val deepLinkRouter by lazy {
-        AppIntentRouter(this, { playerConnection }, listenTogetherManager, partyManager)
+        AppIntentRouter(this, { playerConnection }, partyManager)
     }
 }

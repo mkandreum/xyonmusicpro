@@ -106,7 +106,6 @@ import com.xyonmusic.music.constants.AppLanguageKey
 import com.xyonmusic.music.constants.LanguageCodeToName
 import com.xyonmusic.music.constants.SYSTEM_DEFAULT
 import com.xyonmusic.music.ui.ios.compat.Slider
-import com.xyonmusic.music.constants.ListenTogetherInTopBarKey
 import com.xyonmusic.music.constants.LyricsAnimationStyle
 import com.xyonmusic.music.constants.LyricsAnimationStyleKey
 import com.xyonmusic.music.constants.LyricsTextPositionKey
@@ -219,11 +218,6 @@ fun AppearanceSettings(
     val (appLanguage, onAppLanguageChange) = rememberPreference(key = AppLanguageKey, defaultValue = SYSTEM_DEFAULT)
     var showAppLanguageDialog by rememberSaveable { mutableStateOf(false) }
     val (homeHeroCardEnabled, onHomeHeroCardEnabledChange) = rememberPreference(HomeHeroCardEnabledKey, true)
-
-    val (listenTogetherInTopBar, onListenTogetherInTopBarChange) = rememberPreference(
-        ListenTogetherInTopBarKey,
-        defaultValue = true
-    )
 
     val (swipeToSong, onSwipeToSongChange) = rememberPreference(
         SwipeToSongKey,

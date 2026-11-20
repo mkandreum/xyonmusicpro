@@ -94,7 +94,6 @@ import com.xyonmusic.music.ui.screens.settings.AiSettings
 import com.xyonmusic.music.ui.screens.settings.integrations.DiscordSettings
 import com.xyonmusic.music.ui.screens.settings.integrations.IntegrationScreen
 import com.xyonmusic.music.ui.screens.settings.integrations.LastFMSettings
-import com.xyonmusic.music.ui.screens.settings.integrations.ListenTogetherSettings
 import com.xyonmusic.music.ui.screens.ambient.AmbientModeScreen
 import com.xyonmusic.music.ui.screens.recognition.RecognitionScreen
 import com.xyonmusic.music.ui.screens.recognition.RecognitionHistoryScreen

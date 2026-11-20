@@ -15,11 +15,9 @@ import androidx.datastore.preferences.core.edit
 import androidx.lifecycle.coroutineScope
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.NavHostController
-import com.xyonmusic.music.constants.ListenTogetherUsernameKey
 import com.xyonmusic.music.models.toMediaMetadata
 import com.xyonmusic.music.playback.PlayerConnection
 import com.xyonmusic.music.playback.queues.YouTubeQueue
-import com.xyonmusic.music.listentogether.ListenTogetherManager
 import com.xyonmusic.music.utils.dataStore
 import com.xyonmusic.music.utils.get
 import com.xyonmusic.music.utils.reportException
@@ -35,7 +33,6 @@ import dagger.Lazy
 internal class AppIntentRouter(
     private val activity: MainActivity,
     private val currentPlayerConnection: () -> PlayerConnection?,
-    private val listenTogetherManagerProvider: Lazy<ListenTogetherManager>,
     private val partyManagerProvider: Lazy<com.xyonmusic.music.jam.JamManager>,
 ) {
 
@@ -61,7 +58,6 @@ internal class AppIntentRouter(
 
     private fun routeSharedLink(uri: Uri, navController: NavHostController) {
         if (openPartyInvite(uri, navController)) return
-        if (joinListenRoom(uri)) return
 
         when (uri.pathSegments.firstOrNull()) {
             "playlist" -> openPlaylist(uri, navController)
@@ -82,27 +78,6 @@ internal class AppIntentRouter(
         val code = cleanId(uri.pathSegments.firstOrNull(), min = 4, max = 16) ?: return true
         partyManagerProvider.get().offerInvite(code, uri.getQueryParameter("server"))
         // Listen Together was removed: the invite is noted but there is no screen to open.
-        return true
-    }
-
-    private fun joinListenRoom(uri: Uri): Boolean {
-        val rawCode = uri.getQueryParameter("code")
-            ?: uri.getQueryParameter("room")
-            ?: uri.pathSegments.getOrNull(1)
-        val listenCode = cleanId(
-            rawCode,
-            min = 4,
-            max = 16,
-        )
-        val isListenLink = uri.pathSegments.firstOrNull() == "listen" ||
-            uri.host?.equals("listen", ignoreCase = true) == true
-        if (listenCode == null || !isListenLink) return false
-
-        // One listening session at a time: leaving any party first keeps two syncs off one player.
-        partyManagerProvider.get().leave()
-        val username = activity.dataStore.get(ListenTogetherUsernameKey, "").ifBlank { "Guest" }
-        val manager = listenTogetherManagerProvider.get()
-        manager.joinRoom(listenCode, username)
         return true
     }
 

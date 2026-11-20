@@ -340,7 +340,6 @@ internal fun Screens.navSymbol(): String? = when (this) {
     Screens.Discover -> "square.grid.2x2.fill"
     Screens.Downloads -> "arrow.down.circle.fill"
     Screens.Radio -> "dot.radiowaves.left.and.right"
-    Screens.ListenTogether -> "person.2.fill"
     else -> null
 }
 

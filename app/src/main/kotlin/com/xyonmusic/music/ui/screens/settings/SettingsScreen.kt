@@ -97,7 +97,6 @@ import com.xyonmusic.music.viewmodels.HomeViewModel
 /** Root rows that open a page directly rather than a category. */
 private val historyLink = SettingsLink("Historial", R.drawable.music_history, { systemCyan }, SettingsAction.Route("history"))
 private val statsLink = SettingsLink("Estadísticas", R.drawable.stats, { systemYellow }, SettingsAction.Route("stats"))
-private val listenTogetherLink = SettingsLink("Escuchar juntos", R.drawable.group, { systemCyan }, SettingsAction.Route("listen_together_from_topbar"))
 private val updateLink = SettingsLink("Actualizaciones", R.drawable.network_update, { systemGray }, SettingsAction.Route("settings/update"))
 
 /** The root, grouped the way the categories are read: what you hear, what you see, your stuff, help. */

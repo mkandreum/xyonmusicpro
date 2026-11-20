@@ -8,7 +8,6 @@ package com.xyonmusic.music
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
-import com.xyonmusic.music.constants.ListenTogetherInTopBarKey
 import com.xyonmusic.music.constants.LocalOnlyModeKey
 import com.xyonmusic.music.constants.HiddenNavigationRoutesKey
 import com.xyonmusic.music.ui.screens.Screens
@@ -20,7 +19,6 @@ val LocalLocalOnlyMode = androidx.compose.runtime.staticCompositionLocalOf { fal
 /** Destinations shown by the app's navigation bars. */
 @Stable
 class AppNavItems(
-    val listenTogetherInTopBar: Boolean,
     val localOnlyMode: Boolean,
     val navigationItems: List<Screens>,
     val floatingNavigationItems: List<Screens>,
@@ -28,27 +26,20 @@ class AppNavItems(
 
 @Composable
 fun rememberAppNavItems(): AppNavItems {
-    val (listenTogetherInTopBar) = rememberPreference(ListenTogetherInTopBarKey, defaultValue = true)
     // Read once here because both navigation bars use this preference.
     val (localOnlyMode) = rememberPreference(LocalOnlyModeKey, false)
     val (hiddenNavigationRoutes) = rememberPreference(HiddenNavigationRoutesKey, "")
     val hiddenRoutes = remember(hiddenNavigationRoutes) {
         hiddenNavigationRoutes.lineSequence().map(String::trim).filter(String::isNotEmpty).toSet()
     }
-    val navigationItems = remember(listenTogetherInTopBar, localOnlyMode, hiddenRoutes) {
-        val screens = Screens.mainScreens(localOnlyMode)
-        val visible = if (listenTogetherInTopBar) {
-            screens.filter { it != Screens.ListenTogether }
-        } else {
-            screens
-        }
-        visible.filter { it == Screens.Search || it.route !in hiddenRoutes }
+    val navigationItems = remember(localOnlyMode, hiddenRoutes) {
+        Screens.mainScreens(localOnlyMode).filter { it == Screens.Search || it.route !in hiddenRoutes }
     }
     // Explore is only shown in the floating navigation bar, and is online-only.
     val floatingNavigationItems = remember(navigationItems, localOnlyMode, hiddenRoutes) {
         navigationItems
     }
-    return remember(listenTogetherInTopBar, localOnlyMode, navigationItems, floatingNavigationItems) {
-        AppNavItems(listenTogetherInTopBar, localOnlyMode, navigationItems, floatingNavigationItems)
+    return remember(localOnlyMode, navigationItems, floatingNavigationItems) {
+        AppNavItems(localOnlyMode, navigationItems, floatingNavigationItems)
     }
 }

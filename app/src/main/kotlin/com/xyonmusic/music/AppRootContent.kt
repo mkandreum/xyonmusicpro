@@ -120,7 +120,6 @@ import com.xyonmusic.music.ui.component.AppFloatingNowPlayingPill
 import com.xyonmusic.music.ui.component.AppFloatingSideBar
 import com.xyonmusic.music.ui.component.BottomSheetPage
 import com.xyonmusic.music.ui.component.FloatingMiniPlayerWidthFraction
-import com.xyonmusic.music.ui.component.ListenTogetherOverlay
 import com.xyonmusic.music.ui.component.LocalAppBackdrop
 import com.xyonmusic.music.ui.component.LocalAppBackdropFrozen
 import com.xyonmusic.music.ui.component.LocalAppMotionFrozen
@@ -291,7 +290,6 @@ internal fun AppRootContent(
             val (previousTab, setPreviousTab) = rememberSaveable { mutableStateOf("home") }
 
             val navItems = rememberAppNavItems()
-            val listenTogetherInTopBar = navItems.listenTogetherInTopBar
             val localOnlyMode = navItems.localOnlyMode
             val navigationItems = navItems.navigationItems
             val (slimNav) = rememberPreference(SlimNavBarKey, defaultValue = false)
@@ -371,7 +369,6 @@ internal fun AppRootContent(
                     Screens.Radio.route,
                     Screens.Songs.route,
                     Screens.Explore.route,
-                    Screens.ListenTogether.route,
                     "settings",
                 )
             }
@@ -651,13 +648,10 @@ internal fun AppRootContent(
                 com.xyonmusic.music.constants.ChipSortTypeKey,
                 com.xyonmusic.music.constants.LibraryFilter.LIBRARY,
             )
-            LaunchedEffect(effectiveRoute, listenTogetherInTopBar, showRail, libraryFilter, landscapeCoverFlow) {
-                val isListenTogetherScreen = effectiveRoute == Screens.ListenTogether.route ||
-                    currentRoute == "listen_together_from_topbar"
+            LaunchedEffect(effectiveRoute, showRail, libraryFilter, landscapeCoverFlow) {
                 shouldShowTopBar = effectiveRoute in topLevelScreens &&
                     effectiveRoute != "settings" &&
                     !(effectiveRoute == Screens.Library.route && libraryFilter != com.xyonmusic.music.constants.LibraryFilter.LIBRARY) &&
-                    !(isListenTogetherScreen && listenTogetherInTopBar) &&
                     !landscapeCoverFlow
             }
 
@@ -712,7 +706,6 @@ internal fun AppRootContent(
                     Screens.Library.route -> com.xyonmusic.music.R.string.filter_library
                     Screens.Radio.route -> com.xyonmusic.music.R.string.radio
                     Screens.Songs.route -> com.xyonmusic.music.R.string.songs
-                    Screens.ListenTogether.route -> com.xyonmusic.music.R.string.together
                     Screens.Explore.route -> com.xyonmusic.music.R.string.tab_explore
                     else -> null
                 }
@@ -772,8 +765,6 @@ internal fun AppRootContent(
                 LocalDownloadUtil provides downloadUtil,
                 LocalShimmerTheme provides ShimmerTheme,
                 LocalSyncUtils provides syncUtils,
-                // Disable Listen Together until ready; current entry points handle a missing manager.
-                LocalListenTogetherManager provides null,
                 LocalGlassEffectConfig provides glassEffectConfig,
                 com.xyonmusic.music.ui.theme.LocalDarkGlassEffectConfig provides darkGlassEffectConfig,
                 LocalAppleMusicUi provides appleMusicUi,
@@ -995,7 +986,7 @@ internal fun AppRootContent(
                             // Sidebar sections include phone top-bar items and playlists with bookmarkedAt set.
                             val sidebarSections = rememberSideBarSections(
                                 database, showHistoryButton, showStatsButton,
-                                listenTogetherInTopBar, navController, onLibraryFilterChange,
+                                navController, onLibraryFilterChange,
                             )
 
                             val railItems = listOf(Screens.Search, Screens.Home) +
@@ -1314,12 +1305,6 @@ internal fun AppRootContent(
                     liquidGlassPlayerMode = playerBackgroundStyle == PlayerBackgroundStyle.GLASS,
                 )
                 }
-
-                // Show join requests at the app root; the host may be on another screen.
-                ListenTogetherOverlay(
-                    manager = LocalListenTogetherManager.current,
-                    playerConnection = playerConnection,
-                )
 
                 // Queue actions share one entry point, so host the conflict prompt here.
                 QueueConflictDialog(playerConnection = playerConnection)

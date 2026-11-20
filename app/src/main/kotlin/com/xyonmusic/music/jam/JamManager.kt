@@ -16,7 +16,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import com.xyonmusic.music.extensions.metadata
 import com.xyonmusic.music.extensions.toMediaItem
-import com.xyonmusic.music.listentogether.ListenTogetherPlayerConnectionBridge
+import com.xyonmusic.music.jam.PlayerConnectionBridge
 import com.xyonmusic.music.models.MediaMetadata
 import com.xyonmusic.music.playback.PlayerConnection
 import com.xyonmusic.music.playback.queues.ListQueue
@@ -70,8 +70,7 @@ data class JamSession(
 @Singleton
 class JamManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val bridge: ListenTogetherPlayerConnectionBridge,
-    private val classic: dagger.Lazy<com.xyonmusic.music.listentogether.ListenTogetherManager>,
+    private val bridge: PlayerConnectionBridge,
 ) {
     companion object {
         private const val TAG = "Jam"
@@ -167,8 +166,6 @@ class JamManager @Inject constructor(
         if (_busy.value) return
         _busy.value = true
         _message.value = null
-        // Being in a classic room as well would run two syncs against one player.
-        runCatching { classic.get().takeIf { it.isInRoom }?.leaveRoom() }
         val waking = scope.launch {
             delay(3_000)
             _message.value = "Waking the server, this can take up to 30 seconds…"

@@ -102,7 +102,6 @@ import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.size.Size as CoilSize
 import coil3.toBitmap
-import com.xyonmusic.music.LocalListenTogetherManager
 import com.xyonmusic.music.LocalPlayerConnection
 import com.xyonmusic.music.R
 import com.xyonmusic.music.constants.CropAlbumArtKey
@@ -120,7 +119,6 @@ import com.xyonmusic.music.constants.SeekExtraSeconds
 import com.xyonmusic.music.constants.SwipeThumbnailKey
 import com.xyonmusic.music.constants.ThumbnailCornerRadiusKey
 import com.xyonmusic.music.constants.ThumbnailCornerRadius
-import com.xyonmusic.music.listentogether.RoomRole
 import com.xyonmusic.music.ui.component.CastButton
 import com.xyonmusic.music.utils.rememberEnumPreference
 import com.xyonmusic.music.constants.CanvasSource
@@ -552,11 +550,6 @@ private fun ThumbnailHeader(
     textColor: Color,
     modifier: Modifier = Modifier
 ) {
-    val listenTogetherManager = LocalListenTogetherManager.current
-    val listenTogetherRoleState = listenTogetherManager?.role?.collectAsState(initial = RoomRole.NONE)
-    // See Player.kt: gated on control mode, not on role.
-    val canControlTogether = listenTogetherManager?.canControl?.collectAsState(initial = true)
-    val isListenTogetherGuest = canControlTogether?.value == false
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -568,20 +561,11 @@ private fun ThumbnailHeader(
                 .align(Alignment.Center)
                 .padding(horizontal = 48.dp)
         ) {
-            // Listen Together indicator
-            if (listenTogetherRoleState?.value != RoomRole.NONE) {
-                Text(
-                    text = if (listenTogetherRoleState?.value == RoomRole.HOST) "Hosting Listen Together" else "Listening Together",
-                    style = AppTheme.typography.titleMedium,
-                    color = textColor
-                )
-            } else {
-                Text(
-                    text = stringResource(R.string.now_playing),
-                    style = AppTheme.typography.titleMedium,
-                    color = textColor
-                )
-            }
+            Text(
+                text = stringResource(R.string.now_playing),
+                style = AppTheme.typography.titleMedium,
+                color = textColor
+            )
             val playingFrom = albumTitle ?: queueTitle // Prioritize album title
             androidx.compose.animation.AnimatedContent(
                 targetState = playingFrom,

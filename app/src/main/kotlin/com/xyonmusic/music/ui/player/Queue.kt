@@ -126,7 +126,6 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.exoplayer.source.ShuffleOrder.DefaultShuffleOrder
 import androidx.navigation.NavController
-import com.xyonmusic.music.LocalListenTogetherManager
 import com.xyonmusic.music.LocalPlayerConnection
 import com.xyonmusic.music.R
 import com.xyonmusic.music.constants.AutoLoadMoreKey
@@ -139,7 +138,6 @@ import com.xyonmusic.music.constants.UseNewPlayerDesignKey
 import com.xyonmusic.music.extensions.metadata
 import com.xyonmusic.music.extensions.move
 import com.xyonmusic.music.extensions.toggleRepeatMode
-import com.xyonmusic.music.listentogether.RoomRole
 import com.xyonmusic.music.models.MediaMetadata
 import com.xyonmusic.music.ui.component.ActionPromptDialog
 import com.xyonmusic.music.ui.component.BottomSheet
@@ -289,11 +287,8 @@ fun Queue(
     }
 
     // Listen Together state (reactive)
-    val listenTogetherManager = LocalListenTogetherManager.current
-    val listenTogetherRoleState = listenTogetherManager?.role?.collectAsState(initial = com.xyonmusic.music.listentogether.RoomRole.NONE)
-    // See Player.kt: gated on control mode, not on role.
-    val canControlTogether = listenTogetherManager?.canControl?.collectAsState(initial = true)
-    val isListenTogetherGuest = canControlTogether?.value == false
+    // Listen Together is gone: the queue is never locked to a room host.
+    val isListenTogetherGuest = false
 
     val playerConnection = LocalPlayerConnection.current ?: return
     val isPlaying by playerConnection.isEffectivelyPlaying.collectAsStateWithLifecycle()

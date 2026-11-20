@@ -15,8 +15,6 @@ import androidx.room.Room
 import com.xyonmusic.music.constants.MaxSongCacheSizeKey
 import com.xyonmusic.music.db.InternalDatabase
 import com.xyonmusic.music.db.MusicDatabase
-import com.xyonmusic.music.listentogether.ListenTogetherClient
-import com.xyonmusic.music.listentogether.ListenTogetherManager
 import com.xyonmusic.music.utils.dataStore
 import com.xyonmusic.music.utils.get
 import dagger.Module
@@ -97,17 +95,4 @@ object AppModule {
         )
     }
 
-    @Singleton
-    @Provides
-    fun provideListenTogetherClient(
-        @ApplicationContext context: Context,
-    ): ListenTogetherClient = ListenTogetherClient(context)
-
-    @Singleton
-    @Provides
-    fun provideListenTogetherManager(
-        @ApplicationContext context: Context,
-        client: ListenTogetherClient,
-        playerConnectionBridge: com.xyonmusic.music.listentogether.ListenTogetherPlayerConnectionBridge,
-    ): ListenTogetherManager = ListenTogetherManager(client, context, playerConnectionBridge)
 }

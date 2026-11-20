@@ -7,7 +7,7 @@ import android.content.ServiceConnection
 import android.os.IBinder
 import androidx.lifecycle.LifecycleCoroutineScope
 import com.xyonmusic.music.db.MusicDatabase
-import com.xyonmusic.music.listentogether.ListenTogetherPlayerConnectionBridge
+import com.xyonmusic.music.jam.PlayerConnectionBridge
 import com.xyonmusic.music.playback.MusicService.MusicBinder
 import dagger.hilt.android.scopes.ActivityScoped
 import kotlinx.coroutines.CancellationException
@@ -22,7 +22,7 @@ import javax.inject.Provider
 @ActivityScoped
 class PlaybackServiceConnector @Inject constructor(
     private val databaseProvider: Provider<MusicDatabase>,
-    private val listenTogetherConnectionBridge: ListenTogetherPlayerConnectionBridge,
+    private val jamConnectionBridge: PlayerConnectionBridge,
 ) : ServiceConnection {
     private var isBound = false
     private var lifecycleScope: LifecycleCoroutineScope? = null
@@ -97,7 +97,7 @@ class PlaybackServiceConnector @Inject constructor(
     }
 
     private fun onPlayerConnectionChanged(connection: PlayerConnection?) {
-        listenTogetherConnectionBridge.update(connection)
+        jamConnectionBridge.update(connection)
         onConnectionChanged?.invoke(connection)
     }
 

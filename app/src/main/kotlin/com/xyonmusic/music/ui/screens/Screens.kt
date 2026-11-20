@@ -53,11 +53,6 @@ sealed class Screens(
         icon = R.drawable.radio,
     )
 
-    object ListenTogether : Screens(
-        titleId = R.string.together,
-        route = "listen_together",
-        icon = R.drawable.accord_groups,
-    )
 
     /**
      * Flat, alphabetised list of every song on the device. Only ever a tab in local-only
