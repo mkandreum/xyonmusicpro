@@ -696,8 +696,8 @@ private fun NavGraphBuilder.sharedComposable(
                 if (com.xyonmusic.music.ui.utils.isLibraryArtworkMorph()) fadeIn(tween(PageEnterMillis))
                 else slideInHorizontally(Motion.collectionPush()) { it }
             } else if (detail) {
-                slideInHorizontally(tween(PageEnterMillis, easing = FastOutSlowInEasing)) { it } +
-                    fadeIn(tween(PageEnterMillis, easing = FastOutSlowInEasing))
+                slideInHorizontally(tween(PageEnterMillis, easing = Motion.PushEasing)) { it } +
+                    fadeIn(tween(PageEnterMillis, easing = Motion.PushEasing))
             } else {
                 // Tab to tab: rise into focus over the old page (see TabTransitions).
                 if (with(TabTransitions) { isTabSwitch() }) TabTransitions.enter()
@@ -728,8 +728,8 @@ private fun NavGraphBuilder.sharedComposable(
                 else slideOutHorizontally(Motion.collectionPush()) { it }
             } else if (detail) {
                 // Tween, not spring: predictive back scrubs this by gesture progress.
-                slideOutHorizontally(tween(PageExitMillis, easing = FastOutSlowInEasing)) { it / 4 } +
-                    fadeOut(tween(PageExitMillis, easing = FastOutSlowInEasing))
+                slideOutHorizontally(tween(PageExitMillis, easing = Motion.PushEasing)) { it / 4 } +
+                    fadeOut(tween(PageExitMillis, easing = Motion.PushEasing))
             } else {
                 // On top while popping: fade away over the page underneath.
                 if (with(TabTransitions) { isTabSwitch() }) TabTransitions.exitOver()
@@ -761,5 +761,6 @@ private fun NavGraphBuilder.sharedComposable(
     }
 }
 
-private const val PageEnterMillis = 400
-private const val PageExitMillis = 400
+// iOS pushes in ~0.3 s; 400 ms on a Material curve read as the app dragging.
+private const val PageEnterMillis = 300
+private const val PageExitMillis = 260

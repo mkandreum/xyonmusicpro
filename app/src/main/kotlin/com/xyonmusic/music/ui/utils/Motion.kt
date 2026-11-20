@@ -23,15 +23,16 @@ object Motion {
     )
 
     /** List artwork expanding into a detail hero and returning to its source tile. */
-    const val SharedArtworkMillis = 500
+    const val SharedArtworkMillis = 400
     fun <T> sharedArtwork(): FiniteAnimationSpec<T> = tween(
         SharedArtworkMillis,
         easing = ArtworkEasing,
     )
 
+    // 380 took well over half a second to settle a full-width slide; 600 lands in ~350 ms.
     fun collectionPush(): FiniteAnimationSpec<androidx.compose.ui.unit.IntOffset> = spring(
         dampingRatio = 1f,
-        stiffness = 380f,
+        stiffness = 600f,
         visibilityThreshold = androidx.compose.ui.unit.IntOffset(1, 1),
     )
 
@@ -105,7 +106,7 @@ object Motion {
      * [appear], but for the leaving half of a transition that predictive back can
      * gesture-scrub.
      */
-    const val AppearExitMillis = 400
+    const val AppearExitMillis = 240
 
     fun <T> appearExit(): FiniteAnimationSpec<T> = tween(AppearExitMillis, easing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f))
 
@@ -154,7 +155,7 @@ object Motion {
      * the original 200ms tween, short enough that the stale-backdrop window reads
      * as a blur settling rather than a broken transition.
      */
-    const val PushMillis = 400
+    const val PushMillis = 260
 
     /**
      * UIKit's navigation curve. Not `FastOutSlowIn`: Material's curve pulls harder

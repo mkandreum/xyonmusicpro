@@ -29,8 +29,8 @@ import androidx.navigation.NavBackStackEntry
  * and the old page never fully disappears before the new one is visible, so no flash of background.
  */
 internal object TabTransitions {
-    private val riseSpring = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.82f, stiffness = 380f)
-    private const val FadeMillis = 260
+    private val riseSpring = spring<androidx.compose.ui.unit.IntOffset>(dampingRatio = 0.82f, stiffness = 500f)
+    private const val FadeMillis = 220
     const val MaxBlurDp = 24f
 
     fun AnimatedContentTransitionScope<NavBackStackEntry>.isTabSwitch(): Boolean =
