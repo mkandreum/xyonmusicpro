@@ -51,7 +51,6 @@ import com.xyonmusic.music.constants.CanvasThumbnailAnimationKey
 import com.xyonmusic.music.models.MediaMetadata
 import com.xyonmusic.music.utils.rememberEnumPreference
 import com.xyonmusic.music.utils.rememberPreference
-import com.xyonmusic.music.xyonmusiccanvas.XyonMusicCanvasProvider
 import com.xyonmusic.music.utils.SpotifyCanvasLookup
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -567,13 +566,8 @@ private suspend fun fetchCanvasArtwork(context: Context, metadata: MediaMetadata
                         ?.takeIf { !it.animated.isNullOrBlank() }
                         ?: TidalCanvasProvider.getBySongArtist(songTitle, artistName, albumName)
                             ?.takeIf { !it.animated.isNullOrBlank() }
-                        ?: XyonMusicCanvasProvider.getBySongArtist(songTitle, artistName)
-                            ?.takeIf { !it.animated.isNullOrBlank() }
                 CanvasSource.APPLE_MUSIC ->
                     AppleMusicCanvasProvider.getBySongArtist(songTitle, artistName, albumName, storefront)
-                        ?.takeIf { !it.animated.isNullOrBlank() }
-                CanvasSource.XYONMUSIC ->
-                    XyonMusicCanvasProvider.getBySongArtist(songTitle, artistName)
                         ?.takeIf { !it.animated.isNullOrBlank() }
                 CanvasSource.TIDAL ->
                     TidalCanvasProvider.getBySongArtist(songTitle, artistName, albumName)

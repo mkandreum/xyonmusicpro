@@ -475,7 +475,6 @@ fun AppearanceSettings(
                             when (canvasSource) {
                                 CanvasSource.AUTO -> stringResource(R.string.canvas_source_auto)
                                 CanvasSource.APPLE_MUSIC -> stringResource(R.string.canvas_source_apple_music)
-                                CanvasSource.XYONMUSIC -> stringResource(R.string.canvas_source_xyonmusic)
                                 CanvasSource.TIDAL -> stringResource(R.string.canvas_source_tidal)
                                 CanvasSource.SPOTIFY -> stringResource(R.string.canvas_source_spotify)
                             }

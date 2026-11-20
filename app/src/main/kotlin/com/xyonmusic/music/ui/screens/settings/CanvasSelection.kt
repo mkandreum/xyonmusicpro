@@ -161,19 +161,6 @@ fun CanvasSelection(
                 IosSettingsItem(
                     leadingContent = {
                         RadioButton(
-                            selected = canvasSource == CanvasSource.XYONMUSIC,
-                            onClick = null,
-                            enabled = canvasThumbnailAnimation
-                        )
-                    },
-                    title = { Text(stringResource(R.string.canvas_source_xyonmusic)) },
-                    description = { Text(stringResource(R.string.canvas_source_xyonmusic_desc)) },
-                    enabled = canvasThumbnailAnimation,
-                    onClick = { onCanvasSourceChange(CanvasSource.XYONMUSIC) }
-                ),
-                IosSettingsItem(
-                    leadingContent = {
-                        RadioButton(
                             selected = canvasSource == CanvasSource.TIDAL,
                             onClick = null,
                             enabled = canvasThumbnailAnimation

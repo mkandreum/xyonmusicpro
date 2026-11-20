@@ -88,7 +88,6 @@ import com.xyonmusic.music.constants.VocalSuppressionKey
 import com.xyonmusic.music.constants.OpenRouterBaseUrlKey
 import com.xyonmusic.music.constants.OpenRouterModelKey
 import com.xyonmusic.music.constants.DeeplFormalityKey
-import com.xyonmusic.music.lyrics.LyricsTranslationHelper
 import com.xyonmusic.music.utils.rememberPreference
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -118,7 +117,6 @@ fun LyricsMenu(
 
     // Observe the authoritative translation-active state from the singleton; this persists
     // correctly across menu open/close cycles and avoids the lyricsProvider() race condition.
-    val hasTranslations by LyricsTranslationHelper.hasActiveTranslations.collectAsStateWithLifecycle()
     val (savedVocalSuppression, saveVocalSuppression) = rememberPreference(VocalSuppressionKey, 0f)
     var vocalSuppression by rememberSaveable(mediaMetadataProvider().id) {
         mutableFloatStateOf(savedVocalSuppression)
@@ -472,50 +470,6 @@ fun LyricsMenu(
         item {
             IosMenuGroup(
                 items = buildList {
-                    if (hasApiKey) {
-                        add(
-                            IosMenuItemData(
-                                title = { Text(stringResource(R.string.ai_lyrics_translation)) },
-                                icon = {
-                                    SymbolIcon(symbol = sf("character.bubble"), contentDescription = null)
-                                },
-                                onClick = {
-                                    if (hasTranslations) {
-                                        lyricsProvider()?.let { lyrics ->
-                                            val clearedLyrics = LyricsTranslationHelper.clearTranslations(lyrics)
-                                            database.query {
-                                                upsert(clearedLyrics)
-                                            }
-                                            // Resets hasActiveTranslations and clears in-memory translations
-                                            LyricsTranslationHelper.triggerClearTranslations()
-                                        }
-                                    } else {
-                                        LyricsTranslationHelper.triggerManualTranslation()
-                                    }
-                                },
-                                trailingContent = {
-                                    Switch(
-                                        checked = hasTranslations,
-                                        onCheckedChange = { newCheckedState ->
-                                            if (newCheckedState) {
-                                                // Enable translations – hasActiveTranslations updates when done
-                                                LyricsTranslationHelper.triggerManualTranslation()
-                                            } else {
-                                                // Disable translations – triggerClearTranslations resets hasActiveTranslations
-                                                lyricsProvider()?.let { lyrics ->
-                                                    val clearedLyrics = LyricsTranslationHelper.clearTranslations(lyrics)
-                                                    database.query {
-                                                        upsert(clearedLyrics)
-                                                    }
-                                                    LyricsTranslationHelper.triggerClearTranslations()
-                                                }
-                                            }
-                                        },
-                                    )
-                                },
-                            )
-                        )
-                    }
                     
                     add(
                         IosMenuItemData(

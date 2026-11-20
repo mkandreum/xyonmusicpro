@@ -314,7 +314,6 @@ import com.xyonmusic.music.ui.player.CanvasArtworkPlaybackCache
 import com.xyonmusic.music.ui.player.normalizeCanvasArtistName
 import com.xyonmusic.music.ui.player.normalizeCanvasSongTitle
 import com.xyonmusic.music.ui.theme.PlayerSliderColors
-import com.xyonmusic.music.xyonmusiccanvas.XyonMusicCanvasProvider
 import com.xyonmusic.music.utils.SpotifyCanvasLookup
 import java.util.Locale
 

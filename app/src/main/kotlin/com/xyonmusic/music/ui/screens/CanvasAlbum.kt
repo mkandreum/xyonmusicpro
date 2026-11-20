@@ -18,7 +18,6 @@ import com.xyonmusic.music.canvas.CanvasArtwork
 import com.xyonmusic.music.canvas.TidalCanvasProvider
 import com.xyonmusic.music.ui.player.CanvasArtworkPlaybackCache
 import com.xyonmusic.music.utils.SpotifyCanvasLookup
-import com.xyonmusic.music.xyonmusiccanvas.XyonMusicCanvasProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.Locale
@@ -71,10 +70,6 @@ fun rememberAlbumCanvas(
             val spotify = firstSongTitle?.takeIf { it.isNotBlank() }
                 ?.let { SpotifyCanvasLookup.getBySongArtist(context, it, artistName) }
 
-            val xyonmusic = XyonMusicCanvasProvider.getBySongArtist(songQuery, artistName)
-                ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-                ?.takeIf { artistOnlyMatches(it.artist, artistName) }
-
             val apple = AppleMusicCanvasProvider.getByAlbumArtist(
                 album = albumTitle,
                 artist = artistName,
@@ -88,7 +83,7 @@ fun rememberAlbumCanvas(
             )?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
                 ?.takeIf { artistAndAlbumMatch(it, albumTitle, artistName) }
 
-            listOfNotNull(spotify, apple, xyonmusic, tidal)
+            listOfNotNull(spotify, apple, tidal)
         }
 
         candidates = fetched

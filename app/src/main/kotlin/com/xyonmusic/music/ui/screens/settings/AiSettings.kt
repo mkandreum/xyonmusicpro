@@ -43,14 +43,10 @@ import androidx.navigation.NavController
 import com.xyonmusic.music.LocalPlayerAwareWindowInsets
 import com.xyonmusic.music.R
 import com.xyonmusic.music.constants.AiProviderKey
-import com.xyonmusic.music.constants.DeeplApiKey
-import com.xyonmusic.music.constants.DeeplFormalityKey
 import com.xyonmusic.music.constants.LanguageCodeToName
 import com.xyonmusic.music.constants.OpenRouterApiKey
 import com.xyonmusic.music.constants.OpenRouterBaseUrlKey
 import com.xyonmusic.music.constants.OpenRouterModelKey
-import com.xyonmusic.music.constants.TranslateLanguageKey
-import com.xyonmusic.music.constants.TranslateModeKey
 import com.xyonmusic.music.ui.component.EnumDialog
 import com.xyonmusic.music.ui.component.IosSettingsGroup
 import com.xyonmusic.music.ui.component.IosSettingsItem
@@ -67,10 +63,6 @@ fun AiSettings(
     var openRouterApiKey by rememberPreference(OpenRouterApiKey, "")
     var openRouterBaseUrl by rememberPreference(OpenRouterBaseUrlKey, "https://openrouter.ai/api/v1/chat/completions")
     var openRouterModel by rememberPreference(OpenRouterModelKey, "google/gemini-3.1-flash-lite")
-    var translateLanguage by rememberPreference(TranslateLanguageKey, "en")
-    var translateMode by rememberPreference(TranslateModeKey, "Literal")
-    var deeplApiKey by rememberPreference(DeeplApiKey, "")
-    var deeplFormality by rememberPreference(DeeplFormalityKey, "default")
 
     val aiProviders = mapOf(
         "OpenRouter" to "https://openrouter.ai/api/v1/chat/completions",
@@ -81,7 +73,6 @@ fun AiSettings(
         "Gemini" to "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
         "XAi" to "https://api.x.ai/v1/chat/completions",
         "Mistral" to "https://api.mistral.ai/v1/chat/completions",
-        "DeepL" to "https://api.deepl.com/v2/translate",
         "Custom" to ""
     )
 
@@ -94,7 +85,6 @@ fun AiSettings(
         "Gemini" to stringResource(R.string.ai_provider_gemini_help),
         "XAi" to stringResource(R.string.ai_provider_xai_help),
         "Mistral" to stringResource(R.string.ai_provider_mistral_help),
-        "DeepL" to stringResource(R.string.ai_provider_deepl_help),
         "Custom" to ""
     )
 
@@ -151,7 +141,6 @@ fun AiSettings(
             "mistral-small-latest",
             "mistral-tiny-latest"
         ),
-        "DeepL" to listOf(),
         "Custom" to listOf()
     )
 
@@ -159,12 +148,7 @@ fun AiSettings(
 
     var showProviderDialog by rememberSaveable { mutableStateOf(false) }
     var showProviderHelpDialog by rememberSaveable { mutableStateOf(false) }
-    var showTranslateModeDialog by rememberSaveable { mutableStateOf(false) }
-    var showTranslateModeHelpDialog by rememberSaveable { mutableStateOf(false) }
-    var showLanguageDialog by rememberSaveable { mutableStateOf(false) }
     var showApiKeyDialog by rememberSaveable { mutableStateOf(false) }
-    var showDeeplApiKeyDialog by rememberSaveable { mutableStateOf(false) }
-    var showDeeplFormalityDialog by rememberSaveable { mutableStateOf(false) }
     var showBaseUrlDialog by rememberSaveable { mutableStateOf(false) }
     var showModelDialog by rememberSaveable { mutableStateOf(false) }
     var showCustomModelInput by rememberSaveable { mutableStateOf(false) }
@@ -195,48 +179,12 @@ fun AiSettings(
         )
     }
 
-    if (showTranslateModeHelpDialog) {
-        AlertDialog(
-            onDismissRequest = { showTranslateModeHelpDialog = false },
-            confirmButton = {
-                TextButton(onClick = { showTranslateModeHelpDialog = false }) {
-                    Text(stringResource(android.R.string.ok))
-                }
-            },
-            icon = { SymbolIcon(symbol = sf("info.circle"), contentDescription = null) },
-            title = { Text(stringResource(R.string.ai_translation_mode)) },
-            text = { 
-                Column {
-                    Text(
-                        text = "${stringResource(R.string.ai_translation_literal)}:",
-                        style = AppTheme.typography.titleSmall,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                    Text(
-                        text = stringResource(R.string.ai_translation_literal_desc),
-                        style = AppTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-                    
-                    Text(
-                        text = "${stringResource(R.string.ai_translation_transcribed)}:",
-                        style = AppTheme.typography.titleSmall
-                    )
-                    Text(
-                        text = stringResource(R.string.ai_translation_transcribed_desc),
-                        style = AppTheme.typography.bodyMedium
-                    )
-                }
-            }
-        )
-    }
-
     if (showProviderDialog) {
         EnumDialog(
             onDismiss = { showProviderDialog = false },
             onSelect = {
                 aiProvider = it
-                if (it != "Custom" && it != "DeepL") {
+                if (it != "Custom") {
                     openRouterBaseUrl = aiProviders[it] ?: ""
                 } else {
                     openRouterBaseUrl = ""
@@ -256,40 +204,6 @@ fun AiSettings(
         )
     }
 
-    if (showTranslateModeDialog) {
-        EnumDialog(
-            onDismiss = { showTranslateModeDialog = false },
-            onSelect = {
-                translateMode = it
-                showTranslateModeDialog = false
-            },
-            title = stringResource(R.string.ai_translation_mode),
-            current = translateMode,
-            values = listOf("Literal", "Transcribed"),
-            valueText = {
-                when (it) {
-                    "Literal" -> stringResource(R.string.ai_translation_literal)
-                    "Transcribed" -> stringResource(R.string.ai_translation_transcribed)
-                    else -> it
-                }
-            }
-        )
-    }
-
-    if (showLanguageDialog) {
-        EnumDialog(
-            onDismiss = { showLanguageDialog = false },
-            onSelect = {
-                translateLanguage = it
-                showLanguageDialog = false
-            },
-            title = stringResource(R.string.ai_target_language),
-            current = translateLanguage,
-            values = LanguageCodeToName.keys.sortedBy { LanguageCodeToName[it] },
-            valueText = { LanguageCodeToName[it] ?: it }
-        )
-    }
-
     if (showApiKeyDialog) {
         TextFieldDialog(
             title = { Text(stringResource(R.string.ai_api_key)) },
@@ -300,40 +214,6 @@ fun AiSettings(
                 showApiKeyDialog = false
             },
             onDismiss = { showApiKeyDialog = false }
-        )
-    }
-
-    if (showDeeplApiKeyDialog) {
-        TextFieldDialog(
-            title = { Text("DeepL ${stringResource(R.string.ai_api_key)}") },
-            icon = { SymbolIcon(symbol = sf("key.fill"), contentDescription = null) },
-            initialTextFieldValue = TextFieldValue(text = deeplApiKey),
-            onDone = {
-                deeplApiKey = it
-                showDeeplApiKeyDialog = false
-            },
-            onDismiss = { showDeeplApiKeyDialog = false }
-        )
-    }
-
-    if (showDeeplFormalityDialog) {
-        EnumDialog(
-            onDismiss = { showDeeplFormalityDialog = false },
-            onSelect = {
-                deeplFormality = it
-                showDeeplFormalityDialog = false
-            },
-            title = stringResource(R.string.ai_deepl_formality),
-            current = deeplFormality,
-            values = listOf("default", "more", "less"),
-            valueText = {
-                when (it) {
-                    "default" -> stringResource(R.string.ai_deepl_formality_default)
-                    "more" -> stringResource(R.string.ai_deepl_formality_more)
-                    "less" -> stringResource(R.string.ai_deepl_formality_less)
-                    else -> it
-                }
-            }
         )
     }
 
@@ -386,7 +266,8 @@ fun AiSettings(
 
     SettingsPage(
         navController = navController,
-        title = stringResource(R.string.ai_lyrics_translation),
+        // Provider, key and model for the AI features (DJ, playlist edits, song insight).
+        title = "IA",
         pageColor = AppTheme.colorScheme.background,
         horizontalPadding = 16.dp,
     ) {
@@ -422,105 +303,32 @@ fun AiSettings(
         IosSettingsGroup(
             title = stringResource(R.string.ai_setup_guide),
             items = buildList {
-                if (aiProvider == "DeepL") {
-                    add(
-                        IosSettingsItem(
-                            icon = painterResource(R.drawable.key),
-                            title = { Text("DeepL ${stringResource(R.string.ai_api_key)}") },
-                            description = { 
-                                Text(
-                                    if (deeplApiKey.isNotEmpty()) 
-                                        "•".repeat(minOf(deeplApiKey.length, 8))
-                                    else 
-                                        stringResource(R.string.not_set)
-                                )
-                            },
-                            onClick = { showDeeplApiKeyDialog = true }
-                        )
-                    )
-                    add(
-                        IosSettingsItem(
-                            icon = painterResource(R.drawable.tune),
-                            title = { Text(stringResource(R.string.ai_deepl_formality)) },
-                            description = { 
-                                Text(
-                                    when (deeplFormality) {
-                                        "default" -> stringResource(R.string.ai_deepl_formality_default)
-                                        "more" -> stringResource(R.string.ai_deepl_formality_more)
-                                        "less" -> stringResource(R.string.ai_deepl_formality_less)
-                                        else -> deeplFormality
-                                    }
-                                )
-                            },
-                            onClick = { showDeeplFormalityDialog = true }
-                        )
-                    )
-                } else {
-                    add(
-                        IosSettingsItem(
-                            icon = painterResource(R.drawable.key),
-                            title = { Text(stringResource(R.string.ai_api_key)) },
-                            description = { 
-                                Text(
-                                    if (openRouterApiKey.isNotEmpty()) 
-                                        "•".repeat(minOf(openRouterApiKey.length, 8))
-                                    else 
-                                        stringResource(R.string.not_set)
-                                )
-                            },
-                            onClick = { showApiKeyDialog = true }
-                        )
-                    )
-                    if (aiProvider != "Custom") {
-                        add(
-                            IosSettingsItem(
-                                icon = painterResource(R.drawable.discover_tune),
-                                title = { Text(stringResource(R.string.ai_model)) },
-                                description = { Text(openRouterModel.ifBlank { stringResource(R.string.not_set) }) },
-                                onClick = { showModelDialog = true }
-                            )
-                        )
-                    }
-                }
-            }
-        )
-
-        Spacer(modifier = Modifier.height(27.dp))
-
-        IosSettingsGroup(
-            title = stringResource(R.string.ai_translation_mode),
-            items = buildList {
-                if (aiProvider != "DeepL") {
-                    add(
-                        IosSettingsItem(
-                            icon = painterResource(R.drawable.translate),
-                            title = { Text(stringResource(R.string.ai_translation_mode)) },
-                            description = {
-                                Text(
-                                    when (translateMode) {
-                                        "Literal" -> stringResource(R.string.ai_translation_literal)
-                                        "Transcribed" -> stringResource(R.string.ai_translation_transcribed)
-                                        else -> translateMode
-                                    }
-                                )
-                            },
-                            onClick = { showTranslateModeDialog = true },
-                            trailingContent = {
-                                IconButton(onClick = { showTranslateModeHelpDialog = true }) {
-                                    SymbolIcon(symbol = sf("info.circle"), contentDescription = null, size = 20.dp)
-                                }
-                            }
-                        )
-                    )
-                }
                 add(
                     IosSettingsItem(
-                        icon = painterResource(R.drawable.language),
-                        title = { Text(stringResource(R.string.ai_target_language)) },
-                        description = { Text(LanguageCodeToName[translateLanguage] ?: translateLanguage) },
-                        onClick = { showLanguageDialog = true }
+                        icon = painterResource(R.drawable.key),
+                        title = { Text(stringResource(R.string.ai_api_key)) },
+                        description = { 
+                            Text(
+                                if (openRouterApiKey.isNotEmpty()) 
+                                    "•".repeat(minOf(openRouterApiKey.length, 8))
+                                else 
+                                    stringResource(R.string.not_set)
+                            )
+                        },
+                        onClick = { showApiKeyDialog = true }
                     )
                 )
+                if (aiProvider != "Custom") {
+                    add(
+                        IosSettingsItem(
+                            icon = painterResource(R.drawable.discover_tune),
+                            title = { Text(stringResource(R.string.ai_model)) },
+                            description = { Text(openRouterModel.ifBlank { stringResource(R.string.not_set) }) },
+                            onClick = { showModelDialog = true }
+                        )
+                    )
+                }
+            
             }
         )
 

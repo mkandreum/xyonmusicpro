@@ -136,7 +136,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.delay
 import com.xyonmusic.music.applecanvas.AppleMusicCanvasProvider
-import com.xyonmusic.music.xyonmusiccanvas.XyonMusicCanvasProvider
 import com.xyonmusic.music.utils.SpotifyCanvasLookup
 import java.util.Locale
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -785,10 +784,6 @@ private fun ThumbnailItem(
                                         album = albumName,
                                         storefront = storefront
                                     )?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-                                        ?: XyonMusicCanvasProvider.getBySongArtist(
-                                            song = s,
-                                            artist = a
-                                        )?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
                                         ?: TidalCanvasProvider.getBySongArtist(
                                             song = s,
                                             artist = a,
@@ -803,14 +798,6 @@ private fun ThumbnailItem(
                                         artist = a,
                                         album = albumName,
                                         storefront = storefront
-                                    )?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-                                }
-                            }
-                            CanvasSource.XYONMUSIC -> {
-                                searchTasks.firstNotNullOfOrNull { (s, a) ->
-                                    XyonMusicCanvasProvider.getBySongArtist(
-                                        song = s,
-                                        artist = a
                                     )?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
                                 }
                             }

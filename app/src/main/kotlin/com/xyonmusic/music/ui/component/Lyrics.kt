@@ -185,7 +185,6 @@ import com.xyonmusic.music.lyrics.LyricsUtils.romanizePunjabi
 import com.xyonmusic.music.lyrics.LyricsUtils.romanizeCyrillic
 import com.xyonmusic.music.lyrics.LyricsUtils.romanizeJapanese
 import com.xyonmusic.music.lyrics.LyricsUtils.romanizeKorean
-import com.xyonmusic.music.lyrics.LyricsTranslationHelper
 import com.xyonmusic.music.ui.component.shimmer.ShimmerHost
 import com.xyonmusic.music.ui.component.shimmer.TextPlaceholder
 import com.xyonmusic.music.ui.screens.settings.DarkMode
@@ -205,82 +204,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
 
 /** Centers the active line about a third down the pane and settles before the next line. */
-
-@Composable
-private fun LyricsTranslationStatus(
-    status: LyricsTranslationHelper.TranslationStatus,
-    modifier: Modifier = Modifier,
-) {
-    Box(
-        modifier = modifier,
-        contentAlignment = Alignment.Center,
-    ) {
-        when (status) {
-            is LyricsTranslationHelper.TranslationStatus.Translating -> {
-                TranslationStatusChip(
-                    containerColor = AppTheme.colorScheme.primaryContainer,
-                    contentColor = AppTheme.colorScheme.onPrimaryContainer,
-                    text = stringResource(R.string.ai_translating_lyrics),
-                ) {
-                    androidx.compose.material3.CircularProgressIndicator(
-                        modifier = Modifier.size(16.dp),
-                        strokeWidth = 2.dp,
-                        color = AppTheme.colorScheme.onPrimaryContainer,
-                    )
-                }
-            }
-
-            is LyricsTranslationHelper.TranslationStatus.Error -> {
-                TranslationStatusChip(
-                    containerColor = AppTheme.colorScheme.errorContainer,
-                    contentColor = AppTheme.colorScheme.onErrorContainer,
-                    text = status.message,
-                ) {
-                    SymbolIcon(symbol = sf("exclamationmark.circle"), contentDescription = null, size = 16.dp, tint = AppTheme.colorScheme.onErrorContainer)
-                }
-            }
-
-            is LyricsTranslationHelper.TranslationStatus.Success -> {
-                TranslationStatusChip(
-                    containerColor = AppTheme.colorScheme.tertiaryContainer,
-                    contentColor = AppTheme.colorScheme.onTertiaryContainer,
-                    text = stringResource(R.string.ai_lyrics_translated),
-                ) {
-                    SymbolIcon(symbol = sf("checkmark"), contentDescription = null, size = 16.dp, tint = AppTheme.colorScheme.onTertiaryContainer)
-                }
-            }
-
-            LyricsTranslationHelper.TranslationStatus.Idle -> Unit
-        }
-    }
-}
-
-@Composable
-private fun TranslationStatusChip(
-    containerColor: Color,
-    contentColor: Color,
-    text: String,
-    indicator: @Composable () -> Unit,
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = containerColor),
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            indicator()
-            Text(
-                text = text,
-                style = AppTheme.typography.labelMedium,
-                color = contentColor,
-            )
-        }
-    }
-}
 
 @Composable
 private fun ShareLyricsDialog(
@@ -563,65 +486,13 @@ fun Lyrics(
             }
         }
     }
+    // Lyrics translation was removed; translated lines are never shown.
+    val hasActiveTranslations = false
+
     val isSynced =
         remember(lyrics) {
             !lyrics.isNullOrEmpty() && lyrics.startsWith("[")
         }
-
-    val translationStatus by LyricsTranslationHelper.status.collectAsStateWithLifecycle()
-    val hasActiveTranslations by LyricsTranslationHelper.hasActiveTranslations.collectAsStateWithLifecycle()
-    
-    DisposableEffect(Unit) {
-        LyricsTranslationHelper.setCompositionActive(true)
-        onDispose {
-            LyricsTranslationHelper.setCompositionActive(false)
-            LyricsTranslationHelper.cancelTranslation()
-        }
-    }
-    
-    LaunchedEffect(lines, lyricsEntity, translateLanguage, translateMode) {
-        if (lines.isNotEmpty() && lyricsEntity != null) {
-            LyricsTranslationHelper.loadTranslationsFromDatabase(
-                lyrics = lines,
-                lyricsEntity = lyricsEntity,
-                targetLanguage = translateLanguage,
-                mode = translateMode
-            )
-        }
-    }
-    
-    LaunchedEffect(showLyrics, lines.size) {
-        LyricsTranslationHelper.manualTrigger.collect {
-            val effectiveApiKey = if (aiProvider == "DeepL") deeplApiKey else openRouterApiKey
-            if (showLyrics && lines.isNotEmpty() && effectiveApiKey.isNotBlank()) {
-                LyricsTranslationHelper.translateLyrics(
-                    lyrics = lines,
-                    targetLanguage = translateLanguage,
-                    apiKey = openRouterApiKey,
-                    baseUrl = openRouterBaseUrl,
-                    model = openRouterModel,
-                    mode = translateMode,
-                    scope = scope,
-                    context = context,
-                    provider = aiProvider,
-                    deeplApiKey = deeplApiKey,
-                    deeplFormality = deeplFormality,
-                    useStreaming = true,
-                    songId = currentSong?.id ?: "",
-                    database = database
-                )
-            } else if (effectiveApiKey.isBlank()) {
-                Toast.makeText(context, context.getString(R.string.ai_api_key_required), Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
-
-    // The helper owns the clear request; collect it here to update this screen.
-    LaunchedEffect(Unit) {
-        LyricsTranslationHelper.clearTranslationsTrigger.collect {
-            lines.forEach { it.translatedTextFlow.value = null }
-        }
-    }
 
     // Use one accent color for the lyric text and glow.
     val expressiveAccent = when (playerBackground) {
@@ -823,13 +694,6 @@ fun Lyrics(
             .fillMaxSize()
             .padding(bottom = 12.dp)
     ) {
-        LyricsTranslationStatus(
-            status = translationStatus,
-            modifier = Modifier
-                .fillMaxWidth()
-                .zIndex(1f)
-                .padding(top = 56.dp),
-        )
 
         if (lyrics == LYRICS_NOT_FOUND) {
             Box(

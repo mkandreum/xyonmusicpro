@@ -28,7 +28,6 @@ import com.xyonmusic.music.canvas.CanvasArtwork
 import com.xyonmusic.music.canvas.TidalCanvasProvider
 import com.xyonmusic.music.constants.CanvasSource
 import com.xyonmusic.music.constants.PlayerBackgroundStyle
-import com.xyonmusic.music.xyonmusiccanvas.XyonMusicCanvasProvider
 import com.xyonmusic.music.models.MediaMetadata
 import com.xyonmusic.music.ui.player.CanvasArtworkPlaybackCache
 import com.xyonmusic.music.ui.player.normalizeCanvasArtistName
@@ -165,21 +164,15 @@ fun rememberClassicCanvasState(
                     } else null
                     val appleSong = AppleMusicCanvasProvider.getBySongArtist(s, a, requestedAlbum, storefront)
                         ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-                    val xyonmusic = XyonMusicCanvasProvider.getBySongArtist(s, a)
-                        ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
                     val tidal = TidalCanvasProvider.getBySongArtist(s, a, requestedAlbum)
                         ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-                    listOfNotNull(spotify, appleAlbum, appleSong, xyonmusic, tidal)
+                    listOfNotNull(spotify, appleAlbum, appleSong, tidal)
                 }
                 CanvasSource.SPOTIFY -> listOfNotNull(
                     SpotifyCanvasLookup.getBySongArtist(context, requestedTitle, requestedArtist)
                 )
                 CanvasSource.APPLE_MUSIC -> listOfNotNull(
                     AppleMusicCanvasProvider.getBySongArtist(s, a, requestedAlbum, storefront)
-                        ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
-                )
-                CanvasSource.XYONMUSIC -> listOfNotNull(
-                    XyonMusicCanvasProvider.getBySongArtist(s, a)
                         ?.takeIf { !it.preferredAnimationUrl.isNullOrBlank() }
                 )
                 CanvasSource.TIDAL -> listOfNotNull(

@@ -76,7 +76,6 @@ import com.xyonmusic.music.constants.CanvasSourceKey
 import com.xyonmusic.music.ui.player.normalizeCanvasArtistName
 import com.xyonmusic.music.ui.player.normalizeCanvasSongTitle
 import com.xyonmusic.music.utils.dataStore
-import com.xyonmusic.music.xyonmusiccanvas.XyonMusicCanvasProvider
 import com.xyonmusic.music.canvas.TidalCanvasProvider
 import java.util.Locale
 import kotlinx.coroutines.flow.update
@@ -320,11 +319,9 @@ constructor(
                 CanvasSource.AUTO ->
                     SpotifyCanvasLookup.getBySongArtist(appContext, requestedTitle, requestedArtist)?.preferredAnimationUrl
                         ?: AppleMusicCanvasProvider.getBySongArtist(title, artist, "", storefront)?.preferredAnimationUrl
-                        ?: XyonMusicCanvasProvider.getBySongArtist(title, artist)?.preferredAnimationUrl
                         ?: TidalCanvasProvider.getBySongArtist(title, artist, "")?.preferredAnimationUrl
                 CanvasSource.APPLE_MUSIC ->
                     AppleMusicCanvasProvider.getBySongArtist(title, artist, "", storefront)?.preferredAnimationUrl
-                CanvasSource.XYONMUSIC -> XyonMusicCanvasProvider.getBySongArtist(title, artist)?.preferredAnimationUrl
                 CanvasSource.TIDAL -> TidalCanvasProvider.getBySongArtist(title, artist, "")?.preferredAnimationUrl
                 CanvasSource.SPOTIFY ->
                     SpotifyCanvasLookup.getBySongArtist(appContext, requestedTitle, requestedArtist)?.preferredAnimationUrl
