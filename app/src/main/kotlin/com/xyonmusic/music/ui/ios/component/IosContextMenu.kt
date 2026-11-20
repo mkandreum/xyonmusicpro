@@ -84,11 +84,18 @@ fun IosContextMenuOverlay(
 
         // Read animation state in draw and layer blocks to avoid recomposing the panel per frame.
         // One spring drives the menu size, blur, and fade.
+        // Same motion as every other menu (MenuMotion).
         val progress = transition.animateFloat(
             transitionSpec = {
-                if (targetState) spring(dampingRatio = 0.78f, stiffness = 700f) else tween(150, easing = MenuExitEasing)
+                if (targetState) com.xyonmusic.music.ui.component.MenuMotion.OpenHeight else com.xyonmusic.music.ui.component.MenuMotion.CloseScale
             },
             label = "morph",
+        ) { open -> if (open) 1f else 0f }
+        val fade = transition.animateFloat(
+            transitionSpec = {
+                if (targetState) com.xyonmusic.music.ui.component.MenuMotion.OpenFade else com.xyonmusic.music.ui.component.MenuMotion.CloseFade
+            },
+            label = "fade",
         ) { open -> if (open) 1f else 0f }
         // Menu's placed top-left, written by layout, read by the layer's pivot.
         val menuOrigin = remember { intArrayOf(0, 0) }
@@ -143,11 +150,13 @@ fun IosContextMenuOverlay(
                             Box(
                                 Modifier.graphicsLayer {
                                     val p = progress.value
-                                    // Visible from the first frame as a faint blob (clip f9).
-                                    this.alpha = (p / 0.35f).coerceIn(0f, 1f)
-                                    // Starts the size of the pressed thing, per axis.
-                                    val startX = (anchorRect.width / size.width).coerceIn(0.08f, 1f)
-                                    val startY = (anchorRect.height / size.height).coerceIn(0.08f, 1f)
+                                    this.alpha = fade.value
+                                    // Grows out of the pressed tab (never from smaller than OpenFromScale)
+                                    // and only shrinks to CloseToScale on the way out, fading meanwhile.
+                                    val from = if (transition.targetState) com.xyonmusic.music.ui.component.MenuMotion.OpenFromScale
+                                        else com.xyonmusic.music.ui.component.MenuMotion.CloseToScale
+                                    val startX = maxOf(from, (anchorRect.width / size.width).coerceIn(0f, 1f))
+                                    val startY = maxOf(from, (anchorRect.height / size.height).coerceIn(0f, 1f))
                                     scaleX = startX + (1f - startX) * p
                                     scaleY = startY + (1f - startY) * p
                                     // Grows out of the anchor itself, wherever it sits

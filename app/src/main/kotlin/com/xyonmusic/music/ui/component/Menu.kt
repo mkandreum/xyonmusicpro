@@ -150,7 +150,7 @@ private fun IosMenuItemRow(item: IosMenuItemData) {
             .then(glow.modifier)
             .then(glow.gestureModifier)
             .defaultMinSize(minHeight = 44.dp)
-            .padding(start = 8.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
+            .padding(start = 10.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         item.icon?.let { icon ->

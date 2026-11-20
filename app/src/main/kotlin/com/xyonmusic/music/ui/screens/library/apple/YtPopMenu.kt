@@ -8,6 +8,7 @@ package com.xyonmusic.music.ui.screens.library.apple
 import com.xyonmusic.music.ui.component.sf
 import android.content.Intent
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -49,91 +50,9 @@ import com.music.innertube.models.PlaylistItem
 import com.music.innertube.models.SongItem
 import com.music.innertube.models.YTItem
 
-/** Menu for a YouTube Music tile: queue/station actions, navigation, share, and the full sheet. */
-@Composable
-internal fun ytItemMenu(
-    item: YTItem,
-    navController: NavController,
-    player: PlayerConnection,
-    onMore: () -> Unit,
-): Pair<List<IosMenuItem>, List<IosMenuSection>> {
-    val context = LocalContext.current
-    fun glyph(v: SfSymbol): @Composable (Color) -> Unit = { tint -> IosGlyph(v, tint, 20.dp) }
-
-    val shareUrl = item.shareLink
-    val quick = listOf(
-        IosMenuItem(stringResource(R.string.share), icon = glyph(sf("SFSquareAndArrowUp"))) {
-            context.startActivity(
-                Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, shareUrl), null),
-            )
-        },
-    )
-    val playing = when (item) {
-        is SongItem -> listOf(
-            IosMenuItem(stringResource(R.string.play_next), icon = glyph(sf("SFTextLineFirstAndArrowtriangleForward"))) {
-                player.playNext(item.toMediaMetadata().toMediaItem())
-            },
-            IosMenuItem(stringResource(R.string.play_last), icon = glyph(sf("SFTextLineLastAndArrowtriangleForward"))) {
-                player.addToQueue(item.toMediaMetadata().toMediaItem())
-            },
-            IosMenuItem(stringResource(R.string.start_radio), icon = glyph(sf("SFDotRadiowavesLeftAndRight"))) {
-                player.playQueue(YouTubeQueue.radio(item.toMediaMetadata()))
-            },
-        )
-        is AlbumItem -> listOf(
-            IosMenuItem(stringResource(R.string.start_radio), icon = glyph(sf("SFDotRadiowavesLeftAndRight"))) {
-                player.playQueue(YouTubeAlbumRadio(item.playlistId))
-            },
-        )
-        is PlaylistItem -> listOfNotNull(
-            item.playEndpoint?.let { ep ->
-                IosMenuItem(stringResource(R.string.play), icon = glyph(sf("SFPlay"))) { player.playQueue(YouTubeQueue(ep)) }
-            },
-            item.shuffleEndpoint?.let { ep ->
-                IosMenuItem(stringResource(R.string.shuffle), icon = glyph(sf("SFShuffle"))) { player.playQueue(YouTubeQueue(ep)) }
-            },
-        )
-        is ArtistItem -> listOfNotNull(
-            item.shuffleEndpoint?.let { ep ->
-                IosMenuItem(stringResource(R.string.shuffle), icon = glyph(sf("SFShuffle"))) { player.playQueue(YouTubeQueue(ep)) }
-            },
-            item.radioEndpoint?.let { ep ->
-                IosMenuItem(stringResource(R.string.start_radio), icon = glyph(sf("SFDotRadiowavesLeftAndRight"))) { player.playQueue(YouTubeQueue(ep)) }
-            },
-        )
-    }
-    val going = when (item) {
-        is SongItem -> listOfNotNull(
-            item.album?.let { album ->
-                IosMenuItem(stringResource(R.string.apple_go_to_album), icon = glyph(sf("SFSquareStack"))) {
-                    navController.navigate(albumRoute(album.id, item.thumbnail))
-                }
-            },
-            item.artists.firstOrNull()?.id?.let { id ->
-                IosMenuItem(stringResource(R.string.apple_go_to_artist), icon = glyph(sf("microphone.dynamic.on.stand"))) {
-                    navController.navigate(artistRoute(id, null))
-                }
-            },
-        )
-        is AlbumItem -> listOfNotNull(
-            item.artists?.firstOrNull()?.id?.let { id ->
-                IosMenuItem(stringResource(R.string.apple_go_to_artist), icon = glyph(sf("microphone.dynamic.on.stand"))) {
-                    navController.navigate(artistRoute(id, null))
-                }
-            },
-        )
-        else -> emptyList()
-    }
-    val more = listOf(
-        IosMenuItem(stringResource(R.string.more_options), icon = glyph(sf("SFEllipsis"))) { onMore() },
-    )
-    return quick to listOf(playing, going, more).filter { it.isNotEmpty() }.map { IosMenuSection(it) }
-}
-
-
 /**
- * A YouTube Music tile with Apple's hold-to-pop: the tile lifts into a preview card with
- * [ytItemMenu] under it; a tap still runs [onClick]. [onMore] opens the full sheet menu.
+ * A YouTube Music tile: a tap runs [onClick], a press-and-hold opens the full item menu
+ * ([onMore]), the same as every other menu in the app.
  */
 @Composable
 internal fun YtPopTile(
@@ -146,33 +65,14 @@ internal fun YtPopTile(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val (quick, sections) = ytItemMenu(item, navController, player, onMore)
-    AppleContextMenu(
-        sections = sections,
-        quickActions = quick,
-        preview = {
-            Cover(item.thumbnail, 12.dp)
-            Text(
-                text = item.title,
-                style = SfStyle(15.sp, 20.sp, FontWeight.SemiBold, (-0.23).sp),
-                color = IosTheme.colors.label,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 10.dp, start = 2.dp),
-            )
-            if (subtitle.isNotEmpty()) {
-                Text(
-                    text = subtitle,
-                    style = SfStyle(13.sp, 18.sp),
-                    color = IosTheme.colors.secondaryLabel,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 2.dp, bottom = 2.dp),
-                )
-            }
-        },
-        onClick = onClick,
-        modifier = modifier,
-        content = content,
-    )
+    // Holding a tile opens the full YouTube item menu, like every other menu in the app.
+    androidx.compose.foundation.layout.Box(
+        modifier.combinedClickable(
+            interactionSource = null,
+            indication = null,
+            onClick = onClick,
+            onLongClick = onMore,
+            onLongClickLabel = item.title,
+        ),
+    ) { content() }
 }

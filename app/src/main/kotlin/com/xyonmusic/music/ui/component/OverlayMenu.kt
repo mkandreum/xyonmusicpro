@@ -108,14 +108,14 @@ fun OverlayMenu(
         if (state.isVisible) {
             anchor = MenuAnchor.lastDown
             shown = true
-            scaleX.snapTo(0.12f); scaleY.snapTo(0.12f); alpha.snapTo(0f)
-            launch { alpha.animateTo(1f, tween(90)) }
-            launch { scaleX.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 700f)) }
-            scaleY.animateTo(1f, spring(dampingRatio = 0.78f, stiffness = 420f))
+            scaleX.snapTo(MenuMotion.OpenFromScale); scaleY.snapTo(MenuMotion.OpenFromScale); alpha.snapTo(0f)
+            launch { alpha.animateTo(1f, MenuMotion.OpenFade) }
+            launch { scaleX.animateTo(1f, MenuMotion.OpenWidth) }
+            scaleY.animateTo(1f, MenuMotion.OpenHeight)
         } else if (shown) {
-            launch { scaleX.animateTo(0.12f, spring(dampingRatio = 1f, stiffness = 900f)) }
-            launch { scaleY.animateTo(0.12f, spring(dampingRatio = 1f, stiffness = 900f)) }
-            alpha.animateTo(0f, tween(140, delayMillis = 40))
+            launch { scaleX.animateTo(MenuMotion.CloseToScale, MenuMotion.CloseScale) }
+            launch { scaleY.animateTo(MenuMotion.CloseToScale, MenuMotion.CloseScale) }
+            alpha.animateTo(0f, MenuMotion.CloseFade)
             shown = false
         }
     }
@@ -232,7 +232,7 @@ fun OverlayMenu(
                 // and a lazy list inside a scrolling parent gets an infinite height and throws.
                 CompositionLocalProvider(LocalInMenuPanel provides true) {
                     Column(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 6.dp),
                         content = { state.content(this) },
                     )
                 }
@@ -241,8 +241,8 @@ fun OverlayMenu(
     }
 }
 
-/** iOS context menus are ~250pt wide; the rows are written for about this. */
-private val MenuWidth = 270.dp
+/** iOS context menus are ~250pt wide; compact, but still room for a two-word action. */
+private val MenuWidth = 250.dp
 
 /**
  * True inside the menu panel: groups and action rows drop their own card backgrounds

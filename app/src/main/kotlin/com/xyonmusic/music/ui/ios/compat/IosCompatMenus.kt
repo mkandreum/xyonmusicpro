@@ -139,19 +139,18 @@ fun DropdownMenu(
     val transition = rememberTransition(state, label = "dropdownMenu")
     // Same morph as the context menu (iOS 27 clip): grows out of the anchor, per axis,
     // blurred until it lands, on one spring.
+    // Same motion as every other menu (MenuMotion): fade on a short curve, width a little ahead
+    // of height on soft springs when opening; a quick shrink and fade when closing.
     val progress = transition.animateFloat(
-        transitionSpec = {
-            if (targetState) spring(dampingRatio = 0.78f, stiffness = 700f) else tween(150)
-        },
-        label = "morph",
+        transitionSpec = { if (targetState) com.xyonmusic.music.ui.component.MenuMotion.OpenFade else com.xyonmusic.music.ui.component.MenuMotion.CloseFade },
+        label = "fade",
     ) { open -> if (open) 1f else 0f }
-    // Width leads, height follows, each a little elastic: the panel stretches open.
     val growX = transition.animateFloat(
-        transitionSpec = { if (targetState) spring(dampingRatio = 0.62f, stiffness = 560f) else tween(140) },
+        transitionSpec = { if (targetState) com.xyonmusic.music.ui.component.MenuMotion.OpenWidth else com.xyonmusic.music.ui.component.MenuMotion.CloseScale },
         label = "growX",
     ) { open -> if (open) 1f else 0f }
     val growY = transition.animateFloat(
-        transitionSpec = { if (targetState) spring(dampingRatio = 0.78f, stiffness = 330f) else tween(140) },
+        transitionSpec = { if (targetState) com.xyonmusic.music.ui.component.MenuMotion.OpenHeight else com.xyonmusic.music.ui.component.MenuMotion.CloseScale },
         label = "growY",
     ) { open -> if (open) 1f else 0f }
     val density = LocalDensity.current
@@ -222,12 +221,14 @@ fun DropdownMenu(
             Column(
                 modifier = modifier
                     .graphicsLayer {
-                        val p = progress.value
-                        // Closing fades with the shrink, so the panel never flattens into a line.
-                        val shrink = if (transition.targetState) 1f else minOf(growX.value, growY.value)
-                        alpha = (p / 0.35f).coerceIn(0f, 1f) * shrink
-                        val sx = (anchorInPopup[2] / size.width).coerceIn(0.08f, 1f)
-                        val sy = (anchorInPopup[3] / size.height).coerceIn(0.08f, 1f)
+                        alpha = progress.value
+                        // Opening grows out of the button (never from smaller than OpenFromScale);
+                        // closing only shrinks to CloseToScale while it fades, so it never
+                        // flattens into a line on its way out.
+                        val from = if (transition.targetState) com.xyonmusic.music.ui.component.MenuMotion.OpenFromScale
+                            else com.xyonmusic.music.ui.component.MenuMotion.CloseToScale
+                        val sx = maxOf(from, (anchorInPopup[2] / size.width).coerceIn(0f, 1f))
+                        val sy = maxOf(from, (anchorInPopup[3] / size.height).coerceIn(0f, 1f))
                         scaleX = sx + (1f - sx) * growX.value
                         scaleY = sy + (1f - sy) * growY.value
                         transformOrigin = TransformOrigin(

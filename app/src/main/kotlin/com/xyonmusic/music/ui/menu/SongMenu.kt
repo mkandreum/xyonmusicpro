@@ -558,7 +558,7 @@ fun SongMenu(
                                 Text(
                                     text = stringResource(
                                         if (song.song.inLibrary == null) R.string.add_to_library
-                                        else R.string.remove_from_library
+                                        else R.string.remove_from_songs
                                     )
                                 )
                             },
@@ -583,6 +583,11 @@ fun SongMenu(
 
                                 database.query {
                                     update(song.song.toggleLibrary())
+                                }
+                                // Out of Songs means off the phone too: a download left behind would
+                                // keep using space where the song can no longer be seen.
+                                if (isInLibrary && download != null && !song.song.isLocal) {
+                                    com.xyonmusic.music.playback.removeDownloads(context, listOf(song.id))
                                 }
                             }
                         )

@@ -136,7 +136,7 @@ private fun ActionSegment(action: NewAction, modifier: Modifier) {
         modifier = modifier
             .clickable(enabled = action.enabled, interactionSource = null, indication = null) { performAction = true }
             .alpha(if (action.enabled) 1f else 0.4f)
-            .padding(vertical = 12.dp, horizontal = 8.dp)
+            .padding(vertical = 10.dp, horizontal = 8.dp)
             .semantics { role = Role.Button },
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(5.dp),

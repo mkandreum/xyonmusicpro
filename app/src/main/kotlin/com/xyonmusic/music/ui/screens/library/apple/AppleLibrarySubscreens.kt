@@ -20,6 +20,7 @@ import com.xyonmusic.music.ui.component.sf
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -1410,61 +1411,54 @@ private fun LetterHeader(letter: String) {
 
 @Composable
 private fun SongRow(song: Song, download: androidx.media3.exoplayer.offline.Download?, navController: NavController, onPlay: () -> Unit) {
-    val entries = songMenu(song, navController) { download }
-    var dots by remember { mutableStateOf(false) }
+    // One song menu across the app: "⋯" and a long press open the same full SongMenu as albums,
+    // search and playlists, in the glass panel that grows out of the finger.
+    val menuState = com.xyonmusic.music.ui.component.LocalMenuState.current
+    val openMenu: () -> Unit = {
+        menuState.show {
+            com.xyonmusic.music.ui.menu.SongMenu(
+                originalSong = song,
+                navController = navController,
+                onDismiss = menuState::dismiss,
+            )
+        }
+    }
     com.xyonmusic.music.ui.utils.ArtworkSourceHost(Modifier) { sourceModifier ->
-    AppleContextMenu(
-        sections = entries.sections,
-        quickActions = entries.quick,
-        preview = {
-            Cover(song.song.thumbnailUrl, 12.dp)
-            Text(song.song.title, style = SfStyle(15.sp, 20.sp, FontWeight.SemiBold, (-0.23).sp), color = IosTheme.colors.label, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 10.dp, start = 2.dp))
-            Text(song.artists.joinToString { it.name }, style = SfStyle(13.sp, 18.sp), color = IosTheme.colors.secondaryLabel, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(start = 2.dp, bottom = 2.dp))
-        },
-        onClick = onPlay,
-        modifier = sourceModifier,
-    ) {
-        ArtRow(
-            art = song.song.thumbnailUrl,
-            artworkId = song.album?.id ?: song.song.albumId,
-            artSize = 48.dp,
-            rowHeight = 64.dp,
-            title = song.song.title,
-            subtitle = song.artists.joinToString { it.name },
-            chevron = false,
-            trailing = {
-                // Every song shows where it stands: downloaded, downloading (ring), failed, or a
-                // faint arrow that downloads it on tap.
-                SongDownloadState(song, download)
-                Box {
+        Box(
+            sourceModifier.combinedClickable(
+                interactionSource = null,
+                indication = null,
+                onClick = onPlay,
+                onLongClick = openMenu,
+                onLongClickLabel = "Más",
+            ),
+        ) {
+            ArtRow(
+                art = song.song.thumbnailUrl,
+                artworkId = song.album?.id ?: song.song.albumId,
+                artSize = 48.dp,
+                rowHeight = 64.dp,
+                title = song.song.title,
+                subtitle = song.artists.joinToString { it.name },
+                chevron = false,
+                trailing = {
+                    // Every song shows where it stands: downloaded, downloading (ring), failed, or a
+                    // faint arrow that downloads it on tap.
+                    SongDownloadState(song, download)
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .size(36.dp)
-                            .menuTrigger { dots = true },
+                            .clickable(onClickLabel = "Más", onClick = openMenu),
                     ) {
                         // Plain ink: the chromed (dodge) glyph disappears on a pure black list.
                         com.xyonmusic.music.ui.component.SymbolIcon(sf("ellipsis"), contentDescription = "Más", size = 20.dp, tint = IosTheme.colors.label, chrome = 0f)
                     }
-                    DropdownMenu(expanded = dots, onDismissRequest = { dots = false }) {
-                        (entries.quick + entries.sections.flatMap { it.items }).forEachIndexed { i, item ->
-                            if (i == entries.quick.size && i > 0) IosMenuDivider()
-                            DropdownMenuItem(
-                                text = { Text(item.title) },
-                                leadingIcon = { item.icon?.invoke(LocalContentColor.current) },
-                                onClick = { dots = false; item.onClick() },
-                            )
-                        }
-                    }
-                }
-                // Keep the three dots left of the A–Z rail instead of under its letters.
-                Spacer(Modifier.width(18.dp))
-            },
-        )
-    }
-    }
-    if (entries.addToPlaylist.value) {
-        AddToPlaylistDialog(isVisible = true, onGetSong = { listOf(song.id) }, onDismiss = { entries.addToPlaylist.value = false })
+                    // Keep the three dots left of the A–Z rail instead of under its letters.
+                    Spacer(Modifier.width(18.dp))
+                },
+            )
+        }
     }
 }
 
@@ -1551,107 +1545,6 @@ private fun DownloadMissingButton(
         Spacer(Modifier.width(8.dp))
         Text(label, style = SfStyle(15.sp, 20.sp, FontWeight.SemiBold), color = IosTheme.tint)
     }
-}
-
-internal class SongMenuEntries(
-    val quick: List<IosMenuItem>,
-    val sections: List<IosMenuSection>,
-    val addToPlaylist: androidx.compose.runtime.MutableState<Boolean>,
-)
-
-/** Apple Music's song menu: Download · Favorite · Share, then queue, playlist and navigation. */
-@Composable
-internal fun songMenu(
-    song: Song,
-    navController: NavController,
-    /** When the caller already observes downloads (a list), its state for this song; skips a per-row flow. */
-    hoistedDownload: (() -> androidx.media3.exoplayer.offline.Download?)? = null,
-): SongMenuEntries {
-    val context = LocalContext.current
-    val database = LocalDatabase.current.get()
-    val playerConnection = LocalPlayerConnection.current
-    val downloadUtil = LocalDownloadUtil.current.get()
-    val addToPlaylist = remember { mutableStateOf(false) }
-    fun glyph(v: SfSymbol): @Composable (Color) -> Unit = { tint -> IosGlyph(v, tint, 20.dp) }
-
-    // A file on the device has no YouTube video to download or link to.
-    val isLocal = song.song.isLocal
-    val songDownload = if (hoistedDownload != null) hoistedDownload() else
-        remember(song.id) { downloadUtil.getDownload(song.id) }.collectAsStateWithLifecycle(initialValue = null).value
-    val isOnDevice = songDownload?.state == androidx.media3.exoplayer.offline.Download.STATE_COMPLETED || (songDownload == null && song.song.isDownloaded)
-    val quick = listOfNotNull(
-        // Download, or remove it when the song is already on the device.
-        if (isLocal) null else if (!isOnDevice && !com.xyonmusic.music.playback.shouldQueueDownload(songDownload?.state)) IosMenuItem(
-            stringResource(R.string.cancel_download), icon = glyph(sf("SFXmark")),
-        ) {
-            // Only this song: the other downloads keep going.
-            com.xyonmusic.music.playback.cancelDownload(context, song.id, downloadUtil.downloads.value)
-        } else if (isOnDevice) IosMenuItem(stringResource(R.string.remove_download), icon = glyph(sf("SFTrash"))) {
-            com.xyonmusic.music.playback.removeDownloads(context, listOf(song.id))
-        } else IosMenuItem(stringResource(R.string.action_download), icon = glyph(sf("SFArrowDownToLine"))) {
-            downloadSongs(context, listOf(DownloadTarget(song.id, song.song.title, song.artists.firstOrNull()?.name, song.song.duration)), downloadUtil.downloads.value)
-        },
-        IosMenuItem(
-            stringResource(R.string.favorite),
-            icon = glyph(if (song.song.liked) sf("SFStarFill") else sf("SFStar")),
-        ) { database.query { update(song.song.toggleLike()) } },
-        if (isLocal) null else IosMenuItem(stringResource(R.string.share), icon = glyph(sf("SFSquareAndArrowUp"))) {
-            context.startActivity(
-                Intent.createChooser(
-                    Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, com.xyonmusic.music.utils.ShareUtils.songUrl(song.id)),
-                    null,
-                ),
-            )
-        },
-    )
-    val sections = listOf(
-        IosMenuSection(
-            listOf(
-                IosMenuItem(stringResource(R.string.play_next), icon = glyph(sf("SFTextLineFirstAndArrowtriangleForward"))) {
-                    playerConnection?.playNext(listOf(song.toMediaItem()))
-                },
-                IosMenuItem(stringResource(R.string.play_last), icon = glyph(sf("SFTextLineLastAndArrowtriangleForward"))) {
-                    playerConnection?.addToQueue(listOf(song.toMediaItem()))
-                },
-            ),
-        ),
-        IosMenuSection(
-            listOf(
-                IosMenuItem(stringResource(R.string.add_to_playlist_ellipsis), icon = glyph(sf("SFTextBadgePlus"))) { addToPlaylist.value = true },
-            ),
-        ),
-        IosMenuSection(
-            listOfNotNull(
-                song.song.albumId?.let { albumId ->
-                    IosMenuItem(stringResource(R.string.apple_go_to_album), icon = glyph(sf("SFSquareStack"))) {
-                        navController.navigate(albumRoute(albumId, song.song.thumbnailUrl))
-                    }
-                },
-                song.artists.firstOrNull()?.let { artist ->
-                    IosMenuItem(stringResource(R.string.apple_go_to_artist), icon = glyph(sf("microphone.dynamic.on.stand"))) {
-                        navController.navigate(artistRoute(artist.id, artist.thumbnailUrl))
-                    }
-                },
-            ),
-        ),
-        // Last, in red as on iOS: takes the song out of Songs, and its download with it so it
-        // does not keep using space where it can no longer be seen.
-        IosMenuSection(
-            listOfNotNull(
-                if (song.song.inLibrary == null) null else IosMenuItem(
-                    stringResource(R.string.remove_from_songs),
-                    icon = glyph(sf("SFTrash")),
-                    role = com.xyonmusic.music.ui.ios.component.IosButtonRole.Destructive,
-                ) {
-                    database.query { removeFromLibrary(song.id) }
-                    if (!isLocal && (isOnDevice || songDownload != null)) {
-                        com.xyonmusic.music.playback.removeDownloads(context, listOf(song.id))
-                    }
-                },
-            ),
-        ),
-    ).filter { it.items.isNotEmpty() }
-    return SongMenuEntries(quick, sections, addToPlaylist)
 }
 
 /** Download state of one song in the list, with a tap to download (or retry) when it is not on the device. */

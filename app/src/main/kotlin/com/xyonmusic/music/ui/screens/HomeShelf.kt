@@ -12,6 +12,7 @@ import com.xyonmusic.music.ui.utils.rememberArtworkSourceOwner
 import com.xyonmusic.music.ui.utils.ArtworkSourceHost
 import android.content.Context
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -79,7 +80,6 @@ import com.xyonmusic.music.ui.menu.YouTubePlaylistMenu
 import com.xyonmusic.music.ui.menu.YouTubeSongMenu
 import com.xyonmusic.music.ui.screens.library.apple.Cover
 import com.xyonmusic.music.ui.screens.library.apple.SfStyle
-import com.xyonmusic.music.ui.screens.library.apple.songMenu
 import com.xyonmusic.music.ui.theme.AppPage
 import com.xyonmusic.music.ui.utils.albumRoute
 import com.xyonmusic.music.ui.utils.artistRoute
@@ -443,51 +443,31 @@ internal fun HomePopMenu(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    var addToPlaylist: androidx.compose.runtime.MutableState<Boolean>? = null
-    val (quick, sections) = when (pop) {
-        is HomePop.Local -> songMenu(pop.song, deps.navController).let { entries ->
-            addToPlaylist = entries.addToPlaylist
-            entries.quick to entries.sections
-        }
-        is HomePop.Yt -> ytItemMenu(pop.item, deps)
-    }
-    AppleContextMenu(
-        sections = sections,
-        quickActions = quick,
-        preview = {
-            Cover(thumbnailUrl, 12.dp)
-            Text(
-                text = title,
-                style = SfStyle(15.sp, 20.sp, FontWeight.SemiBold, (-0.23).sp),
-                color = IosTheme.colors.label,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 10.dp, start = 2.dp),
-            )
-            if (subtitle.isNotEmpty()) {
-                Text(
-                    text = subtitle,
-                    style = SfStyle(13.sp, 18.sp),
-                    color = IosTheme.colors.secondaryLabel,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(start = 2.dp, bottom = 2.dp),
+    // Holding a Home tile opens the same full menu as everywhere else (SongMenu for a song on the
+    // phone, the YouTube item menu otherwise), growing out of the finger. Tapping still opens it.
+    val menuState = com.xyonmusic.music.ui.component.LocalMenuState.current
+    val openMenu: () -> Unit = {
+        when (pop) {
+            is HomePop.Local -> menuState.show {
+                com.xyonmusic.music.ui.menu.SongMenu(
+                    originalSong = pop.song,
+                    navController = deps.navController,
+                    onDismiss = menuState::dismiss,
                 )
             }
-        },
-        onClick = onClick,
-        modifier = modifier,
-        content = content,
-    )
-    val dialog = addToPlaylist
-    if (dialog != null && dialog.value && pop is HomePop.Local) {
-        AddToPlaylistDialog(isVisible = true, onGetSong = { listOf(pop.song.id) }, onDismiss = { dialog.value = false })
+            is HomePop.Yt -> deps.showYtItemMenu(pop.item)
+        }
     }
+    androidx.compose.foundation.layout.Box(
+        modifier.combinedClickable(
+            interactionSource = null,
+            indication = null,
+            onClick = onClick,
+            onLongClick = openMenu,
+            onLongClickLabel = title,
+        ),
+    ) { content() }
 }
-
-@Composable
-internal fun ytItemMenu(item: YTItem, deps: HomeSectionDeps): Pair<List<IosMenuItem>, List<IosMenuSection>> =
-    com.xyonmusic.music.ui.screens.library.apple.ytItemMenu(item, deps.navController, deps.playerConnection) { deps.showYtItemMenu(item) }
 
 /** Where a [YTItem] goes when tapped. Shared by every shelf that carries remote items. */
 internal fun HomeSectionDeps.openYtItem(item: YTItem) {
