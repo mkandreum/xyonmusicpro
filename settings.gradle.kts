@@ -24,7 +24,6 @@ include(":integrations")
 include(":spotify")
 include(":artwork")
 include(":network-storage")
-include(":spine")
 include(":hig")
 
 

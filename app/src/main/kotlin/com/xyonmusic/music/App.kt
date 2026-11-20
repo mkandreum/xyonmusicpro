@@ -88,7 +88,6 @@ class App : Application(), SingletonImageLoader.Factory {
         com.xyonmusic.music.canvas.AppleMusicCatalog.cacheDir = filesDir.resolve("apple_catalog")
         com.xyonmusic.music.core.UpdateNotificationHelper.cancelUpdateNotification(this)
         // Eclipse addons identify clients by UA; they require "XyonMusic/<app-version>".
-        com.music.spine.ModuleManager.userAgent = "XyonMusic/${BuildConfig.VERSION_NAME}"
 
         // StrictMode: debug-only, catches main-thread IO before it ships.
         // Release untouched — zero behavior change there.

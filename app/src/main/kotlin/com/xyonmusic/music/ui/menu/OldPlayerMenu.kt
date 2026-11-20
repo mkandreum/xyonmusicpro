@@ -73,7 +73,6 @@ import com.xyonmusic.music.ui.component.NewAction
 import com.xyonmusic.music.ui.component.NewActionGrid
 import com.xyonmusic.music.ui.component.VolumeSlider
 import com.xyonmusic.music.ui.theme.rememberGlobalAccentColors
-import com.xyonmusic.music.constants.EnableSaavnStreamingKey
 import com.xyonmusic.music.utils.rememberPreference
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -120,7 +119,7 @@ fun OldPlayerMenu(
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
     val repeatMode by playerConnection.repeatMode.collectAsStateWithLifecycle()
     val shuffleModeEnabled by playerConnection.shuffleModeEnabled.collectAsStateWithLifecycle()
-    val (saavnEnabled) = rememberPreference(EnableSaavnStreamingKey, defaultValue = false)
+    val saavnEnabled = false
 
     val artists = remember(mediaMetadata.artists) {
         mediaMetadata.artists.filter { it.id != null }

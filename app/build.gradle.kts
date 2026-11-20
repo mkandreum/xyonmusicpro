@@ -356,7 +356,6 @@ dependencies {
     implementation(project(":artwork"))
     implementation(project(":network-storage"))
     implementation(project(":canvas"))
-    implementation(project(":spine"))
     implementation(project(":hig"))
 
 

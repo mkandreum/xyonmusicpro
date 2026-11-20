@@ -104,7 +104,6 @@ import com.xyonmusic.music.ui.component.IosMenuGroup
 import com.xyonmusic.music.ui.component.IosMenuItemData
 import com.xyonmusic.music.ui.component.NewAction
 import com.xyonmusic.music.ui.component.NewActionGrid
-import com.xyonmusic.music.constants.EnableSaavnStreamingKey
 import com.xyonmusic.music.utils.rememberPreference
 import com.xyonmusic.music.ui.player.rememberSleepTimerState
 import com.xyonmusic.music.ui.player.SleepTimerDialogHost
@@ -135,7 +134,7 @@ fun PlayerMenu(
     if (showAudioDevices) AudioDeviceMenu(onDismiss = { showAudioDevices = false })
     val librarySong by database.song(mediaMetadata.id).collectAsState(initial = null)
     val coroutineScope = rememberCoroutineScope()
-    val (saavnEnabled) = rememberPreference(EnableSaavnStreamingKey, defaultValue = false)
+    val saavnEnabled = false
 
     val download by LocalDownloadUtil.current.get().getDownload(mediaMetadata.id)
         .collectAsState(initial = null)

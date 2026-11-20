@@ -101,13 +101,6 @@ import com.xyonmusic.music.constants.AudioOffload
 import com.xyonmusic.music.constants.AudioQualityKey
 import com.xyonmusic.music.constants.AutoDownloadOnLikeKey
 import com.xyonmusic.music.constants.EnableTidalStreamingKey
-import com.xyonmusic.music.constants.EnabledModulesKey
-import com.xyonmusic.music.constants.ModuleSettingsKey
-import com.xyonmusic.music.constants.ModuleSourcesKey
-import com.xyonmusic.music.constants.ForceSelectedQualityKey
-import com.xyonmusic.music.constants.EnableSaavnStreamingKey
-import com.xyonmusic.music.constants.SaavnAudioQualityKey
-import com.xyonmusic.music.constants.SaavnFallbackToYouTubeKey
 import com.xyonmusic.music.constants.TidalQualityKey
 import com.xyonmusic.music.constants.TidalInstanceUrlKey
 import com.xyonmusic.music.constants.AutoLoadMoreKey
@@ -3410,16 +3403,9 @@ class MusicService :
 
     /** Provider preferences that require resolving the queue again. */
     private fun streamSourcePreferences(prefs: androidx.datastore.preferences.core.Preferences): List<String> = listOf(
-        prefs[EnabledModulesKey] ?: "[]",
-        prefs[ModuleSourcesKey] ?: "[]",
-        prefs[ModuleSettingsKey] ?: "{}",
-        (prefs[EnableSaavnStreamingKey] ?: false).toString(),
-        prefs[SaavnAudioQualityKey].orEmpty(),
-        (prefs[SaavnFallbackToYouTubeKey] ?: true).toString(),
         (prefs[EnableTidalStreamingKey] ?: false).toString(),
         prefs[TidalQualityKey].orEmpty(),
         prefs[TidalInstanceUrlKey].orEmpty(),
-        (prefs[ForceSelectedQualityKey] ?: false).toString(),
     )
 
     private data class ResolvedStream(
@@ -3434,12 +3420,10 @@ class MusicService :
         /** Reads DataStore synchronously; call from a loader or IO thread. */
         fun effectiveCacheKey(mediaId: String): String {
             val prefs = runBlocking { dataStore.data.first() }
-            val enabledModules = prefs[EnabledModulesKey] ?: "[]"
-            val hasModules = runCatching { org.json.JSONArray(enabledModules).length() > 0 }.getOrDefault(false)
             val fallbackSuffix = if (forceAacAudioMediaIds.contains(mediaId)) "#aac" else ""
             val videoMode = mediaId in videoModeMediaIds
             val forceStandard = mediaId in forceStandardAudioMediaIds
-            if (!hasModules && prefs[EnableTidalStreamingKey] != true && prefs[EnableSaavnStreamingKey] != true &&
+            if (prefs[EnableTidalStreamingKey] != true &&
                 !videoMode && !forceStandard
             ) return "$mediaId$fallbackSuffix"
             val fingerprint = (streamSourcePreferences(prefs) + listOf(
@@ -3529,9 +3513,9 @@ class MusicService :
 
             val streamUrl = playbackData.streamUrl
             if (playbackData.isHlsStream) hlsStreamKeys.add(effKey) else hlsStreamKeys.remove(effKey)
-            Timber.tag("SpineDebug").d("DataSourceResolver: resolved mediaId=$mediaId isSpineStream=${playbackData.isSpineStream} isTidalStream=${playbackData.isTidalStream} hls=${playbackData.isHlsStream}")
+            Timber.tag("StreamDebug").d("DataSourceResolver: resolved mediaId=$mediaId isTidalStream=${playbackData.isTidalStream} hls=${playbackData.isHlsStream}")
 
-            if (playbackData.isTidalStream || playbackData.isSpineStream) {
+            if (playbackData.isTidalStream) {
                 losslessStreamMediaIds.add(mediaId)
             } else {
                 losslessStreamMediaIds.remove(mediaId)
@@ -3542,7 +3526,7 @@ class MusicService :
 
             return ResolvedStream(
                 uri = streamUrl.toUri(),
-                directFile = playbackData.isTidalStream || playbackData.isSpineStream,
+                directFile = playbackData.isTidalStream,
                 hls = playbackData.isHlsStream,
             )
         }
@@ -3676,7 +3660,7 @@ class MusicService :
 
                 // Streaming formats use separate cache keys.
                 val effKey = effectiveCacheKey(mediaId)
-                Timber.tag("SpineDebug").d("DataSourceResolver: mediaId=$mediaId effKey=$effKey")
+                Timber.tag("StreamDebug").d("DataSourceResolver: mediaId=$mediaId effKey=$effKey")
                 val spec = if (effKey == mediaId) dataSpec else dataSpec.buildUpon().setKey(effKey).build()
 
                 val shouldBypassCache = bypassCacheForQualityChange.contains(mediaId)

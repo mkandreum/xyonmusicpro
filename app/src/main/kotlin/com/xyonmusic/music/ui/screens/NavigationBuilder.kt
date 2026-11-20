@@ -82,7 +82,6 @@ import com.xyonmusic.music.ui.screens.settings.PlayerSettings
 import com.xyonmusic.music.ui.screens.settings.PlayerAdvancedSettings
 import com.xyonmusic.music.ui.screens.settings.AppearanceAdvancedSettings
 import com.xyonmusic.music.ui.screens.settings.ContentAdvancedSettings
-import com.xyonmusic.music.ui.screens.settings.JioSettings
 import com.xyonmusic.music.ui.screens.settings.LocalFoldersSettingsScreen
 import com.xyonmusic.music.ui.screens.settings.ScanMusicScreen
 import com.xyonmusic.music.ui.screens.settings.SongTransitionsScreen
@@ -99,8 +98,6 @@ import com.xyonmusic.music.ui.screens.settings.integrations.ListenTogetherSettin
 import com.xyonmusic.music.ui.screens.ambient.AmbientModeScreen
 import com.xyonmusic.music.ui.screens.recognition.RecognitionScreen
 import com.xyonmusic.music.ui.screens.recognition.RecognitionHistoryScreen
-import com.xyonmusic.music.ui.screens.settings.ModuleSourceScreen
-import com.xyonmusic.music.ui.screens.settings.ModuleDetailScreen
 import com.xyonmusic.music.ui.screens.settings.UpdateSettings
 import com.xyonmusic.music.ui.screens.wrapped.WrappedScreen
 import com.xyonmusic.music.core.updater.UpdateScreen
@@ -529,9 +526,6 @@ fun NavGraphBuilder.navigationBuilder(
         PlayerAdvancedSettings(navController, scrollBehavior)
     }
 
-    sharedComposable("settings/player/jio") {
-        JioSettings(navController, scrollBehavior)
-    }
 
     sharedComposable("settings/scan_music") {
         ScanMusicScreen(navController, scrollBehavior)
@@ -614,20 +608,7 @@ fun NavGraphBuilder.navigationBuilder(
         IntegrationScreen(navController, scrollBehavior)
     }
 
-    sharedComposable("settings/modules") {
-        ModuleSourceScreen(navController, scrollBehavior)
-    }
 
-    sharedComposable(
-        route = "settings/modules/{moduleId}",
-        arguments = listOf(
-            navArgument("moduleId") {
-                type = NavType.StringType
-            },
-        ),
-    ) {
-        ModuleDetailScreen(navController, scrollBehavior, it.arguments?.getString("moduleId") ?: "")
-    }
 
     sharedComposable("settings/integrations/discord") {
         DiscordSettings(navController, scrollBehavior, snackbarHostState)

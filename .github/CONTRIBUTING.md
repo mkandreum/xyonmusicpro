@@ -48,7 +48,6 @@ A flavor is a pair, for example `UniversalFoss` or `UniversalGms`, plus a build 
 | `spotify/` | Spotify sign-in and playlist import. |
 | `integrations/` | Discord, Last.fm, JioSaavn and music recognition. |
 | `network-storage/` | SMB and WebDAV music sources. |
-| `spine/` | The module host: loading and managing add-on modules. |
 | `hig/` | Cupertino-style UI components. |
 | `listen-together-server/` | The Listen Together server (Cloudflare Worker, TypeScript). |
 

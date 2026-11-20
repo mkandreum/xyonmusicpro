@@ -41,12 +41,9 @@ import com.xyonmusic.music.constants.CompactPlayerInTabViewKey
 import com.xyonmusic.music.constants.CrossfadeEnabledKey
 import com.xyonmusic.music.constants.CrossfadeGaplessKey
 import com.xyonmusic.music.constants.DisableLoadMoreWhenRepeatAllKey
-import com.xyonmusic.music.constants.EnableSaavnStreamingKey
 import com.xyonmusic.music.constants.HistoryDuration
 import com.xyonmusic.music.constants.PersistentShuffleAcrossQueuesKey
 import com.xyonmusic.music.constants.PreventDuplicateTracksInQueueKey
-import com.xyonmusic.music.constants.SaavnAudioQuality
-import com.xyonmusic.music.constants.SaavnAudioQualityKey
 import com.xyonmusic.music.constants.SeekExtraSeconds
 import com.xyonmusic.music.constants.ShufflePlaylistFirstKey
 import com.xyonmusic.music.constants.SkipSilenceInstantKey
@@ -110,11 +107,6 @@ fun PlayerAdvancedSettings(
         SeekExtraSeconds,
         defaultValue = false
     )
-    val (saavnEnabled, _) = rememberPreference(EnableSaavnStreamingKey, defaultValue = false)
-    val (saavnQuality, _) = rememberEnumPreference(
-        SaavnAudioQualityKey,
-        defaultValue = SaavnAudioQuality.QUALITY_320
-    )
 
     val (autoLoadMore, onAutoLoadMoreChange) = rememberPreference(
         AutoLoadMoreKey,
@@ -153,17 +145,6 @@ fun PlayerAdvancedSettings(
                 IosSettingsGroup(
                     title = "Motor de audio",
                     items = buildList {
-                        add(IosSettingsItem(
-                            icon = painterResource(R.drawable.graphic_eq),
-                            title = { Text(stringResource(R.string.jiosaavn_settings)) },
-                            description = {
-                                Text(
-                                    if (saavnEnabled) saavnQuality.toLabel()
-                                    else stringResource(R.string.jiosaavn_streaming_disabled)
-                                )
-                            },
-                            onClick = { navController.navigate("settings/player/jio") }
-                        ))
                         if (crossfadeEnabled) {
                             add(IosSettingsItem(
                                 icon = painterResource(R.drawable.album),

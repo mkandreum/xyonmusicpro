@@ -140,7 +140,6 @@ object SettingsHubs {
                 listOf(
                     SettingsLink("Reproducción avanzada", R.drawable.settings, { systemGray }, route("settings/player/advanced"),
                         "Descarga de audio, bit-perfect y reglas de cola", "offload bit perfect duplicates history duration"),
-                    SettingsLink("JioSaavn", R.drawable.music_note, { systemTeal }, route("settings/player/jio"), "Ajustes de la fuente"),
                     SettingsLink("Análisis DJ con IA", R.drawable.equalizer, { systemPurple }, route("ai_dj_set"),
                         "Analiza canciones y crea una mezcla", "bpm key mix analysis"),
                 ),
@@ -198,10 +197,6 @@ object SettingsHubs {
                     SettingsLink("Buscar archivos locales", R.drawable.search, { systemGreen }, route("settings/scan_music"), "Busca canciones en este móvil"),
                     SettingsLink("Almacenamiento en red", R.drawable.storage, { systemGray }, route("settings/network_storage"), "Carpetas SMB y WebDAV", "smb webdav nas"),
                 ),
-            ),
-            SettingsLinkGroup(
-                null,
-                listOf(SettingsLink("Módulos", R.drawable.link, { systemBlue }, route("settings/modules"), "Fuentes de música y extensiones", "plugins extensions")),
             ),
         ),
     )

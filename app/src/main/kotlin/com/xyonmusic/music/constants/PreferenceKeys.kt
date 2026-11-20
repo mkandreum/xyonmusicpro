@@ -202,15 +202,7 @@ val SpatialAudioKey = booleanPreferencesKey("spatialAudio")
 /** Center-channel reduction for a stereo karaoke mix. */
 val VocalSuppressionKey = floatPreferencesKey("vocalSuppression")
 
-// JioSaavn streaming
-val EnableSaavnStreamingKey = booleanPreferencesKey("enableSaavnStreaming")
-val SaavnAudioQualityKey    = stringPreferencesKey("saavnAudioQuality")
-/** On (default): a JioSaavn miss (no match, no stream URL) falls through to a normal
- *  YouTube fetch, so playback never just fails. Off: a miss fails the playback attempt
- *  instead, for a user who wants Saavn-or-nothing rather than a silent audio swap. */
-val SaavnFallbackToYouTubeKey = booleanPreferencesKey("saavnFallbackToYouTube")
 /** When enabled, prevents lossless sources from overriding the selected quality. */
-val ForceSelectedQualityKey = booleanPreferencesKey("forceSelectedQuality")
 
 // Lossless (TIDAL via hifi-api). Opt-in, off by default. Streaming only for now.
 val EnableTidalStreamingKey = booleanPreferencesKey("enableTidalStreaming")
@@ -229,24 +221,6 @@ enum class TidalQuality {
     fun toLabel() = when (this) {
         LOSSLESS -> "Lossless (16-bit FLAC)"
         HI_RES   -> "Hi-Res (24-bit)"
-    }
-}
-
-enum class SaavnAudioQuality {
-    QUALITY_320,
-    QUALITY_160,
-    QUALITY_96;
-
-    fun toApiValue() = when (this) {
-        QUALITY_320 -> "320kbps"
-        QUALITY_160 -> "160kbps"
-        QUALITY_96  -> "96kbps"
-    }
-
-    fun toLabel() = when (this) {
-        QUALITY_320 -> "High (320 kbps)"
-        QUALITY_160 -> "Medium (160 kbps)"
-        QUALITY_96  -> "Low (96 kbps)"
     }
 }
 
@@ -768,10 +742,6 @@ val CustomFontNameKey = stringPreferencesKey("customFontName")
 val CustomFontArtistOnlyKey = booleanPreferencesKey("customFontArtistOnly")
 
 // 8spine Modules
-val ModuleSourcesKey = stringPreferencesKey("moduleSources")
-val EnabledModulesKey = stringPreferencesKey("enabledModules")
-val ModuleSettingsKey = stringPreferencesKey("moduleSettings")
-val FetchedModulesKey = stringPreferencesKey("fetchedModules")
 
 
 val LyricsAnimationStyleKey = stringPreferencesKey("lyricsAnimationStyle")
