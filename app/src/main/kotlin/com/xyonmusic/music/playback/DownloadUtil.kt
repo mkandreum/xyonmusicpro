@@ -347,7 +347,16 @@ constructor(
     private fun downloadStreamUrl(playbackData: YTPlayerUtils.PlaybackData): String = when {
         playbackData.isHlsStream || playbackData.isDashStream -> HlsJoinDataSource.uriFor(playbackData.streamUrl).toString()
         playbackData.isTidalStream -> playbackData.streamUrl
-        else -> "${playbackData.streamUrl}&range=0-${playbackData.format.contentLength ?: 10_000_000}"
+        else -> {
+            // The byte range must end inside the file: googlevideo answers 416 to a range past its
+            // end. Fallback clients (VISIONOS after a bot check on ANDROID_VR) often leave
+            // contentLength out, and the old 10 MB guess failed every song shorter than that, so
+            // read the size from the URL's own clen= and, without one, ask for no range at all:
+            // RangedUpstreamDataSource still fetches it in chunks and stops at the real end.
+            val length = playbackData.format.contentLength?.takeIf { it > 0 }
+                ?: playbackData.streamUrl.toUri().getQueryParameter("clen")?.toLongOrNull()?.takeIf { it > 0 }
+            if (length != null) "${playbackData.streamUrl}&range=0-${length - 1}" else playbackData.streamUrl
+        }
     }
 
     // Separate joined HLS bytes from any cached YouTube rendition.
@@ -671,7 +680,7 @@ private const val URL_EXPIRY_MARGIN_MS = 10 * 60 * 1000L
 
 /**
  * googlevideo answers 403 (or 410) when a signed URL expired, was bound to another client or
- * only covered part of the file. The URL is then useless: [onRejected] drops it so the
+ * only covered part of the file, and 416 when its byte range runs past the end of the file. The URL is then useless: [onRejected] drops it so the
  * DownloadManager's next retry resolves a fresh one instead of failing on the same URL.
  */
 @UnstableApi
@@ -694,7 +703,8 @@ internal class ExpiredUrlGuard(
         val code = generateSequence<Throwable>(error) { it.cause }
             .filterIsInstance<androidx.media3.datasource.HttpDataSource.InvalidResponseCodeException>()
             .firstOrNull()?.responseCode
-        if (code == 403 || code == 410) key?.let(onRejected)
+        // 416: the URL's range does not fit the file it points at, so it can never succeed either.
+        if (code == 403 || code == 410 || code == 416) key?.let(onRejected)
         throw error
     }
 }
